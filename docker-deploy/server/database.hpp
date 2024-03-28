@@ -17,10 +17,12 @@ void createTable(string SQLfile, connection *C);
 void deleteTable(connection *C, string tableName);
 
 string addAccount(connection *C, float balance);
-string addPosition(connection *C, string symbol, int account_id, int amount);
+string addPosition(connection *C, string symbol, int account_id, float amount);
 
-string openOrder(connection *C, string symbol, int account_id, int amount, int price, int type);
-string cancelOrder(connection *C, string symbol, int account_id, int amount, int price, int type);
-string executeOrder(connection *C, string symbol, int account_id, int amount, int price, int type);
+string openOrder(connection *C, string symbol, int account_id, int trans_id, float amount, int price);
+string cancelOrder(connection *C, int account_id, int trans_id);
+string executeOrder(connection *C, string symbol, int account_id, int trans_id, float amount, int price);
+
+string query(connection *C, string tableName);
 
 #endif

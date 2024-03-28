@@ -6,13 +6,6 @@ void executeSQL(connection* C, string sql){
     W.commit();
 }
 
-// result getResult(connection *C, string sql){
-//     work W(*C);
-//     result R(W.exec(sql));
-//     W.commit();
-  
-//     return R;
-// }
 void getResult(connection *C, string sql, result &res){
     work W(*C);
     res = result(W.exec(sql));
@@ -64,7 +57,7 @@ string  addAccount(connection *C, int account_id, float balance){
     return "<created id=\""+to_string(account_id)+"\"/>\n";
 }
 
-string addPosition(connection *C, string symbol, int account_id, int amount){
+string addPosition(connection *C, string symbol, int account_id, float amount){
     if(amount < 0){
         return "<error id=\"" + to_string(account_id) + "\">xxx</error>\n";
         // TBD
@@ -111,7 +104,7 @@ string addPosition(connection *C, string symbol, int account_id, int amount){
     return "<created sym=\"" + to_string(symbol) + "\" id=\"" + to_string(account_id) + "\"/>\n";
 }
 
-string openOrder(connection *C, string symbol, int account_id, int amount, int price, int type){
+string openOrder(connection *C, string symbol, int account_id, int trans_id, float amount, int price){
     // check account
     string sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT_ID ="+ to_string(account_id) + ";";
     result res;
@@ -131,14 +124,137 @@ string openOrder(connection *C, string symbol, int account_id, int amount, int p
     getResult(C, sql, res);
     int stock_id = res.at(0).at(0).as<int>();
     
+    // not enough balance
 
-    // TBD: 如果想要买，但是账户里的钱暂时不够，可以买吗？
     return "";
 }
 
-string cancelOrder(connection *C, string symbol, int account_id, int amount, int price, int type){
+string cancelOrder(connection *C, int account_id, int trans_id){
+    // // check amount
+    // string sql;
+    // sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT_ID ="+ to_string(account_id) + ";";
+    // result res;
+    // getResult(C, sql, res);
+    // if(res.size() != 0){
+    //     return "<error id=\"" + to_string(account_id) + "\">Account already exists</error>\n";
+    // }
+    // // check if not have this stock and enough amount in position
+    // sql = "SELECT * FROM POSITION, STOCK WHERE STOCK.SYMBOL=" + to_string(symbol)+ " AND POSITION.STOCK_ID=STOCK.STOCK_ID" +
+    //     " AND POSITION.ACCOUNT_ID="+ to_string(account_id) + " AND POSITION.AMOUNT>=" + to_string(amount)+";";
+    // getResult(C, sql, res);
+    // if(res.size()==0){
+    //     return "<error id=\"" + to_string(account_id) + "\">Stock amount is not enough or not have this stock</error>\n";
+    // }
+    // sql = "SELECT * FROM POSITION, STOCK WHERE STOCK.SYMBOL="+to_string(symbol)+ " AND POSITION.ACCOUNT_ID="+ to_string(account_id)+
+    //     " AND POSITION.STOCK_ID=STOCK.STOCK_ID AND POSITION.AMOUNT=" + to_string(amount)+";";
+    // getResult(C, sql, res);
+    // if(res.size()!=0){  // cancel all
+    //     // cancel the order directly TBD
+    //     sql = "DELETE FROM POSITION WHERE STOCK.SYMBOL=;" + to_string(symbol) + " AND STOCK.STOCK_ID=POSITION.STOCK_ID "
+    //         "AND POSITION.ACCOUNT_ID="+ to_string(account_id) +";";
+    //     return "\n";
+    // }else{  // cancel part
+    //     sql = "SELECT COUNT(*) FROM STOCK WHERE SYMBOL ="+ to_string(symbol) + ";";
+    //     getResult(C, sql, res);
+    //     int stock_id = res.at(0).at(0).as<int>();
+    //     sql = "UPDATE POSITION SET POSITION.AMOUNT=POSITION.AMOUNT-" + to_string(amount) + "WHERE your_condition;"
+    // }
+
+    // find trans order
+    string sql;
+    sql = "SELECT ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS"
+        "FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + ";";
+    result res;
+    getResult(C, sql, res);
+    if(res.size()!=1){
+        return "<error></error>";
+        // TBD
+    }
+    int account = res.at(0).at(0).as<int>();
+    int stock_id = res.at(0).at(1).as<int>();
+    float amount = res.at(0).at(2).as<int>();
+    int price = res.at(0).at(3).as<int>();
+    int status = res.at(0).at(4).as<int>();
+    if(account != account_id){
+        return "<error>xxxx</error>"; // this order not belonf to this account
+    }
+    
+    if(amount > 0){     // buy
+        // add balance
+        sql = "UPDATE ACCOUNT SET BALANCE=BALANCR+" + to_string(price*amount) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
+        executeSQL(C, sql);
+
+    }else{      // sell
+        // add position
+        sql = "INSERT INTO POSITION VALUES (" + to_string(stock_id) + to_string(account_id) + to_string(amount) + ");";
+        executeSQL(C, sql);
+    }
+
+    return "<canceled>xxx</canceled>"; //TBD
+}
+
+string executeOrder(connection *C, string symbol, int account_id, float amount, int price){
+    string sql;
+    sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
+    result res;
+    getResult(C, sql, res);
+    if(res.size() == 0){
+        return "<error>xxx</error>\n"; 
+        // TBD account not exist
+    }
+    if(amount == 0){
+        return "<error>xxx</error>\n"; 
+        // TBD
+    }
+
+    if(amount > 0){ // buy
+        // check balance and substract
+        sql = "SELECT BALANCE FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
+        getResult(C, sql, res);
+        int balance = res.at(0).at(0).as<int>();
+        if(balance < amount*price){
+            return "<error>";
+            // TBD
+        }
+        sql = "UPDATE ACCOUNT SET BALANCE=BALANCE-" + to_string(amount*price) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) +";";
+        executeSQL(C, sql);
+    }else{  // sell
+        // check position and substract
+        sql = "SELECT POSITION.AMOUNT, POSITION.STOCK_ID FROM POSITION, STOCK WHERE STOCK.SYMBOL=" +to_string(symbol) + " AND STOCK.STOCK_ID = POSITION.STOCK_ID AND "
+            "POSITION.ACCOUNT_ID=" + to_string(account_id) + ";";
+        getResult(C, sql, res);
+        if(res.size()==0){
+            return "<error>\n";
+            // TBD: account dont have this stock
+        }
+        int original_amount = res.at(0).at(0).as<int>();
+        int stock_id = res.at(0).at(1).as<int>();
+        if(original_amount < amount){
+            return "<error></error>\n";
+            //TBD
+        }else if(original_amount == amount){
+            // delete data from position
+            sql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(account_id) + ";";
+            executeSQL(C, sql);
+        }else if(original_amount > amount){
+            //update data in position
+            sql = "UPDATE POSITION.AMOUNT SET POSITION.BALANCE=POSITION.BALANCE-" + to_string(amount) + 
+                " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(account_id) + ";";
+            executeSQL(C, sql);
+        }
+    }
+
+    // check whether overlap and need execute
+    // TBD
+
+
+
     return "";
 }
-string executeOrder(connection *C, string symbol, int account_id, int amount, int price, int type){
+
+string query(connection *C, string tableName){
+    
+
+
     return "";
 }
