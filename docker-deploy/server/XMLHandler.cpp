@@ -44,6 +44,9 @@ void XMLHandler::parseCreate(connection* C, const pugi::xml_node& createNode, st
             // }
             response += createSymbol(C, child);
         }
+        else {
+            response += "<error>Invalid create tag</error>\n";
+        }
     }
 
     response += "</results>";
@@ -67,13 +70,17 @@ void XMLHandler::parseTransactions(connection* C, const pugi::xml_node& transact
             // std::cout << "Cancel:\n" << "Id: " << child.attribute("id").value() << std::endl;
             response += queryOrder(C, child);
         }
+        else {
+            int accountId = child.parent().attribute("id").as_int();
+            response += "<error id=\"" + to_string(accountId) + "\">Invalid transaction tag</error>\n";
+        }
     }
     response += "</results>";
 }
 
 std::string XMLHandler::createAccount(connection* C, const pugi::xml_node& accountNode) {
     int accountId = accountNode.attribute("id").as_int();
-    double balance = accountNode.attribute("balance").as_double();
+    float balance = accountNode.attribute("balance").as_float();
     return addAccount(C, accountId, balance);
 }
 
@@ -82,7 +89,7 @@ std::string XMLHandler::createSymbol(connection* C, const pugi::xml_node& symbol
     std::string response;
     for (pugi::xml_node accountNode : symbolNode.children("account")) {
         int accountId = accountNode.attribute("id").as_int();
-        int amount = accountNode.text().as_int();
+        float amount = accountNode.text().as_float();
         response += addPosition(C, symbol, accountId, amount);
     }
     return response;
