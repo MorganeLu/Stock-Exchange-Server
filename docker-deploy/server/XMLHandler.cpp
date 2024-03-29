@@ -1,6 +1,44 @@
 #include "XMLHandler.hpp"
 #include <iostream>
 
+std::string receiveRequest(int client_fd) {
+    // vector<char> req(BUFF_SIZE, 0);
+    // int len = recv(client_fd, req.data(), BUFF_SIZE, 0);
+    // if (len <= 0) {
+    //     std::cout << "Failed to receive request." << std::endl;
+    //     return;
+    // }
+    std::string header;
+    char buffer;
+    while (recv(client_fd, &buffer, 1, 0) > 0 && buffer != '\n') {
+        header.push_back(buffer);
+    }
+
+    int xmlLength = std::stoi(header);
+
+    if (xmlLength <= 0) {
+        std::cerr << "Invalid XML length received." << std::endl;
+        return "";
+    }
+    std::cout << "Total length: " << xmlLength << std::endl;
+
+    std::vector<char> xmlData(xmlLength + 1, 0);
+
+    int totalBytesRead = 0;
+    while (totalBytesRead < xmlLength) {
+        int bytesRead = recv(client_fd, xmlData.data() + totalBytesRead, xmlLength - totalBytesRead, 0);
+        if (bytesRead <= 0) {
+            std::cerr << "Failed to receive complete XML data." << std::endl;
+            return "";
+        }
+        totalBytesRead += bytesRead;
+    }
+
+    std::string xmlContent(xmlData.begin(), xmlData.end());
+    std::cout << "XML content: " << xmlContent << std::endl;
+    return xmlContent;
+}
+
 std::string XMLHandler::handleXML(connection* C, const std::string& xmlContent) {
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(xmlContent.c_str());

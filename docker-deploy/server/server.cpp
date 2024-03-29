@@ -1,6 +1,7 @@
 #include "server.hpp"
+#include "XMLHandler.hpp"
 
-int Server::connect2Client(){
+int Server::connect2Client() {
     // std::cout<<socket_fd<<std::endl;
     struct sockaddr_storage socket_addr;
     socklen_t socket_addr_len = sizeof(socket_addr);
@@ -8,7 +9,7 @@ int Server::connect2Client(){
     // std::cout<<socket_fd<<std::endl;
     // printf("before accept\n");
     // std::cout<<socket_fd<<std::endl;
-    client_connection_fd = accept(socket_fd, (struct sockaddr *)&socket_addr, &socket_addr_len);
+    client_connection_fd = accept(socket_fd, (struct sockaddr*)&socket_addr, &socket_addr_len);
     // std::cout<<client_connection_fd;
     if (client_connection_fd == -1) {
         std::cerr << "Error: cannot accept connection on socket" << std::endl;
@@ -18,12 +19,12 @@ int Server::connect2Client(){
     return client_connection_fd;
 }
 
- int Server::buildServer(){
+int Server::buildServer() {
     memset(&host_info, 0, sizeof(host_info));
-    host_info.ai_family   = AF_UNSPEC;
+    host_info.ai_family = AF_UNSPEC;
     host_info.ai_socktype = SOCK_STREAM;
-    host_info.ai_flags    = AI_PASSIVE;
-    
+    host_info.ai_flags = AI_PASSIVE;
+
     // printf("before");
 
     int status;
@@ -35,9 +36,9 @@ int Server::connect2Client(){
     } //if
     // printf("getaddrinfo\n");
 
-    socket_fd = socket(host_info_list->ai_family, 
-                host_info_list->ai_socktype, 
-                host_info_list->ai_protocol);
+    socket_fd = socket(host_info_list->ai_family,
+        host_info_list->ai_socktype,
+        host_info_list->ai_protocol);
     // std::cout<<socket_fd<<std::endl;
     if (socket_fd == -1) {
         std::cerr << "Error: cannot create socket" << std::endl;
@@ -57,7 +58,7 @@ int Server::connect2Client(){
 
     status = listen(socket_fd, 512);
     if (status == -1) {
-        std::cerr << "Error: cannot listen on socket" << std::endl; 
+        std::cerr << "Error: cannot listen on socket" << std::endl;
         std::cerr << "  (" << hostname << "," << port << ")" << std::endl;
         return EXIT_FAILURE;
     } //if
@@ -65,25 +66,48 @@ int Server::connect2Client(){
     return EXIT_SUCCESS;
 }
 
-void Server::run(){
+void Server::run() {
     int ready = buildServer();
     // cout<<"starting..."<<endl;
-    if(ready == EXIT_FAILURE){
+    if (ready == EXIT_FAILURE) {
         perror("Cannot connect\n");
         exit(EXIT_FAILURE);
     }
 
     while (true) {
         int client_fd = connect2Client();
-        char request[512];
-        recv(client_fd, request, 512, 0);
+        // char request[512];
+        // recv(client_fd, request, 512, 0);
         // parse XML TBD: 需要判断收到的长度啥的
+        XMLHandler xmlhandler;
+        std::string request = xmlhandler.receiveRequest(client_fd);
 
-        string response = xxxx;
-        const char *response_xml = response.c_str();
-        send(client_fd, response_xml, strlen(response_xml),0);
+        connection* C;
+
+        try {
+            //Establish a connection to the database
+            //Parameters: database name, user name, user password
+            C = new connection("dbname=stock user=postgres password=passw0rd");
+            if (C->is_open()) {
+                cout << "Opened database successfully: " << C->dbname() << endl;
+            }
+            else {
+                cout << "Can't open database" << endl;
+                return;
+            }
+        }
+        catch (const std::exception& e) {
+            cerr << e.what() << std::endl;
+            return;
+        }
+        string response = xmlhandler.handleXML(C, request);
+        C->disconnect();
+
+        const char* response_xml = response.c_str();
+        send(client_fd, response_xml, strlen(response_xml), 0);
 
         freeaddrinfo(host_info_list);
+        // 是不是应该client_fd?
         close(socket_fd);
     }
 }
