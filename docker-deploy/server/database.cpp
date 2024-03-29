@@ -78,7 +78,7 @@ string addPosition(connection* C, string symbol, int account_id, float amount) {
     }
 
     // check stock existance
-    sql = "SELECT STOCK.STOCK_ID FROM STOCK WHERE SYMBOL=\"" + symbol + "\";";
+    sql = "SELECT STOCK.STOCK_ID FROM STOCK WHERE SYMBOL=\'" + symbol + "\';";
     // result res;
     getResult(C, sql, res);
     if (res.size() == 0) {
@@ -86,7 +86,7 @@ string addPosition(connection* C, string symbol, int account_id, float amount) {
         executeSQL(C, sql);
     }
 
-    sql = "SELECT COUNT(*) FROM STOCK WHERE SYMBOL =" + to_string(symbol) + ";";
+    sql = "SELECT COUNT(*) FROM STOCK WHERE SYMBOL =\'" + symbol + "\';";
 
     getResult(C, sql, res);
     int stock_id = res.at(0).at(0).as<int>();
@@ -105,9 +105,9 @@ string addPosition(connection* C, string symbol, int account_id, float amount) {
     // }
 
     //为什么两个account_id?
-    sql = "INSERT INTO POSITION (STOCK_ID, ACCOUNT_ID, AMOUNT) VALUES (" + to_string(account_id) +
+    sql = "INSERT INTO POSITION (STOCK_ID, ACCOUNT_ID, AMOUNT) VALUES (" +
         to_string(stock_id) + "," + to_string(account_id) + "," + to_string(amount) +
-        "ON CONFLICT (STOCK_ID, ACCOUNT_ID) DO UPDATE SET AMOUNT = POSITION.AMOUNT + " + to_string(amount) + ";";
+        ")ON CONFLICT (STOCK_ID, ACCOUNT_ID) DO UPDATE SET AMOUNT = POSITION.AMOUNT + " + to_string(amount) + ";";
     executeSQL(C, sql);
     return "<created sym=\"" + to_string(symbol) + "\" id=\"" + to_string(account_id) + "\"/>\n";
 }
