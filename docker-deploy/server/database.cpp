@@ -12,9 +12,9 @@ void getResult(connection* C, string sql, result& res) {
     W.commit();
 }
 
-string getCurrTime(){
+string getCurrTime() {
     std::time_t currentTime = std::time(nullptr);
-    struct tm *localTime = localtime(&currentTime);
+    struct tm* localTime = localtime(&currentTime);
 
     std::time_t utcTime = std::mktime(localTime);
     return std::asctime(std::gmtime(&utcTime));
@@ -47,7 +47,6 @@ void deleteTable(connection* C, string tableName) {
 string  addAccount(connection* C, int account_id, float balance) {
     if (balance < 0) {  //TBD: CAN?
         return "<error id=\"" + to_string(account_id) + "\">Negative blance is not allowed</error>\n";
-        // TBD: ERROR XML
     }
 
     // Check account existance
@@ -57,7 +56,6 @@ string  addAccount(connection* C, int account_id, float balance) {
     getResult(C, sql, res);
     if (res.size() != 0) {
         return "<error id=\"" + to_string(account_id) + "\">Account already exists</error>\n";
-        // TBD: ERROR XML, account exists
     }
 
     sql = "INSERT INTO ACCOUNT (ACCOUNT_ID, BALANCE) VALUES (" + to_string(account_id) + "," + to_string(balance) + ");";
@@ -68,7 +66,6 @@ string  addAccount(connection* C, int account_id, float balance) {
 string addPosition(connection* C, string symbol, int account_id, float amount) {
     if (amount < 0) {
         return "<error id=\"" + to_string(account_id) + "\">Negative amount is not allowed</error>\n";
-        // TBD
     }
 
     string sql;
@@ -88,7 +85,7 @@ string addPosition(connection* C, string symbol, int account_id, float amount) {
         sql = "INSERT INTO STOCK (SYMBOL) VALUES (" + symbol + ");";
         executeSQL(C, sql);
     }
-    //这个是为了得到stock_id吗？可否用 SELECT STOCK_ID FROM STOCK WHERE SYMBOL = symbol
+
     sql = "SELECT COUNT(*) FROM STOCK WHERE SYMBOL =" + to_string(symbol) + ";";
 
     getResult(C, sql, res);
@@ -123,7 +120,6 @@ string openOrder(connection* C, string symbol, int account_id, int trans_id, flo
     // 这里应该对不存在的账户报错？
     if (res.size() != 0) {
         return "<error id=\"" + to_string(account_id) + "\">Account already exists</error>\n";
-        // TBD: ERROR XML, account exists
     }
 
     // check if have this stock and amount
@@ -150,7 +146,6 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
     getResult(C, sql, res);
     if (res.size() != 1) {
         return "<error id=\"" + to_string(trans_id) + "\">Order does not exist</error>";
-        // TBD
     }
     int account = res.at(0).at(0).as<int>();
     int stock_id = res.at(0).at(1).as<int>();
@@ -158,7 +153,7 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
     int price = res.at(0).at(3).as<int>();
     int status = res.at(0).at(4).as<int>();
     if (account != account_id) {
-        return "<error id=\"" + to_string(trans_id) + "\">Account does not have this order</error>"; // this order not belonf to this account
+        return "<error id=\"" + to_string(trans_id) + "\">Account does not have this order</error>";
     }
 
     if (amount > 0) {     // buy
@@ -176,7 +171,7 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
     sql = "UPDATE ORDER SET STATUSS=CANCELED WHERAE ORDER.TRANS_ID=" + to_string(trans_id) + ";";
     executeSQL(C, sql);
 
-    return "<canceled id=\"" + to_string(trans_id) + "\">xxx</canceled>"; //TBD
+    return "<canceled id=\"" + to_string(trans_id) + "\">xxx</canceled>";
 }
 
 string executeOrder(connection* C, string symbol, int account_id, float amount, int price) {
@@ -186,15 +181,13 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     getResult(C, sql, res);
     if (res.size() == 0) {
         return "<error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
-        // TBD account not exist
     }
     if (amount == 0) {
         return "<error id=\"" + to_string(account_id) + "\">Ammount cannot be 0</error>\n";
-        // TBD
     }
 
     int stock_id;
-    if(amount > 0){ // buy
+    if (amount > 0) { // buy
         // check balance and substract
         sql = "SELECT BALANCE FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
         getResult(C, sql, res);
@@ -202,10 +195,14 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         if (balance < amount * price) {
             return "<error  sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) +
                 "\" limit=\"" + to_string(price) + "\">Balance is not enough</error>\n";
-            // TBD
         }
         sql = "UPDATE ACCOUNT SET BALANCE=BALANCE-" + to_string(amount * price) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
         executeSQL(C, sql);
+
+        // 需要加上这个吗？
+        // Add or update position
+        // sql = "INSERT INTO POSITION (STOCK_ID, ACCOUNT_ID, AMOUNT) VALUES (" + to_string(stock_id) + ", " + to_string(account_id) + ", " + to_string(amount) +
+        //     ") ON CONFLICT (STOCK_ID, ACCOUNT_ID) DO UPDATE SET AMOUNT = POSITION.AMOUNT + " + to_string(amount) + ";";
     }
     else {  // sell
         // check position and substract
@@ -214,13 +211,12 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         getResult(C, sql, res);
         if (res.size() == 0) {
             return "<error id=\"" + to_string(account_id) + "\">Account does not have this stock</error>\n";
-            // TBD: account dont have this stock
         }
         int original_amount = res.at(0).at(0).as<int>();
         int stock_id = res.at(0).at(1).as<int>();
-        if(original_amount < amount){
-            return "<error></error>\n";
-            //TBD
+        // 是否需要将amount转为正数?
+        if (original_amount < amount) {
+            return "<error id=\"" + to_string(account_id) + "\">Amount is not enough</error>\n";
         }
         else if (original_amount == amount) {
             // delete data from position
@@ -229,43 +225,48 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         }
         else if (original_amount > amount) {
             //update data in position
-            sql = "UPDATE POSITION.AMOUNT SET POSITION.BALANCE=POSITION.BALANCE-" + to_string(amount) +
+            sql = "UPDATE POSITION.AMOUNT SET POSITION.AMOUNT=POSITION.AMOUNT-" + to_string(amount) +
                 " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(account_id) + ";";
             executeSQL(C, sql);
         }
     }
-    
+
     // add new order
-    sql = "INSERT INTO ORDER VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount) 
+    sql = "INSERT INTO ORDER VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount)
         + "," + to_string(price) + ", OPEN, " + getCurrTime() + ");";
     executeSQL(C, sql);
 
     // check whether overlap and need execute
     // TBD
 
-
+    // add sell order
+    // get all buy orders
+    // while(true){ // iterate all buy orders
+    //     get all sell orders
+    //         
+    //}
 
     return "";
 }
 
-string query(connection *C, int trans_id, int account_id){
-    string msg = "<status id= " + to_string(trans_id) + ">\n";
+string query(connection* C, int trans_id, int account_id) {
+    string msg = "<status id=" + to_string(trans_id) + ">\n";
     // check account
     string sql;
     sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
     result res;
     getResult(C, sql, res);
-    if(res.size() == 0){
-        return "<error>xxx</error>\n"; 
-        // TBD account not exist
+    if (res.size() == 0) {
+        return "<error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
     }
 
+    // 这一个和下面一个有什么区别？
     // check trans_id
     sql = "SELECT ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS"
         "FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + ";";
     getResult(C, sql, res);
-    if(res.size()!=1){
-        return "<error></error>";
+    if (res.size() != 1) {
+        return "<error id=\"" + to_string(trans_id) + "\">Order not exists</error>";
         // TBD order not exist
     }
 
@@ -273,26 +274,36 @@ string query(connection *C, int trans_id, int account_id){
     sql = "SELECT ORDER.STOCK_ID, ORDER.AMOUNT, ORDER.PRICE, ORDER_TIME FROM ORDER WHERE "
         "ORDER.TRANS_ID=" + to_string(trans_id) + ";";
     getResult(C, sql, res);
-    if(res.size()==0){
-        return "<error></error>";
+    if (res.size() == 0) {
+        return "<error id=\"" + to_string(trans_id) + "\">Order not exists</error>";
         // TBD order not exist
     }
 
+    // order可能split了，查询结果可能有多个
     // find open
     sql = "SELECT ORDER.AMOUNT FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=OPEN;";
     getResult(C, sql, res);
-    msg += "/r<open shares=" + to_string(res.at(0).at(0).as<int>()) + "/>\n";
+    for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
+        msg += "/r<open shares=" + to_string(it[0].as<int>()) + "/>\n";
+    }
+    // msg += "/r<open shares=" + to_string(res.at(0).at(0).as<int>()) + "/>\n";
 
     // find cancel
     sql = "SELECT ORDER.AMOUNT, ORDER_TIME FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=CANCELED;";
     getResult(C, sql, res);
-    msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " time=" + to_string(res.at(0).at(1).as<string>()) + "/>\n";
+    for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
+        msg += "/r<canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
+    }
+    // msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " time=" + to_string(res.at(0).at(1).as<string>()) + "/>\n";
 
     // find execute
     sql = "SELECT ORDER.AMOUNT, ORDER.PRICE, ORDER_TIME FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=EXECUTED;";
     getResult(C, sql, res);
-    msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " price=" + to_string(res.at(0).at(1).as<int>())+ " time=" + to_string(res.at(0).at(2).as<string>()) + "/>\n";
-    
+    for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
+        msg += "/r<canceled shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
+    }
+    // msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " price=" + to_string(res.at(0).at(1).as<int>()) + " time=" + to_string(res.at(0).at(2).as<string>()) + "/>\n";
+
     msg += "</status>";
     return msg;
 }

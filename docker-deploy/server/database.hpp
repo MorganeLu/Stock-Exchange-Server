@@ -12,7 +12,7 @@ using namespace std;
 using namespace pqxx;
 
 void executeSQL(connection* C, string sql);
-result getResult(work &W, string sql);
+result getResult(work& W, string sql);
 
 string getCurrTime();
 
@@ -26,6 +26,6 @@ string openOrder(connection* C, string symbol, int account_id, int trans_id, flo
 string cancelOrder(connection* C, int account_id, int trans_id);
 string executeOrder(connection* C, string symbol, int account_id, float amount, int price);
 
-string query(connection* C, string tableName);
+string query(connection* C, int trans_id, int account_id);
 
 #endif
