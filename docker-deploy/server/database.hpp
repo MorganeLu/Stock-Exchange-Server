@@ -6,12 +6,15 @@
 #include <pqxx/pqxx>
 #include <fstream>
 #include <iostream>
+#include <ctime>
 
 using namespace std;
 using namespace pqxx;
 
 void executeSQL(connection* C, string sql);
 result getResult(work &W, string sql);
+
+string getCurrTime();
 
 void createTable(string SQLfile, connection *C);
 void deleteTable(connection *C, string tableName);

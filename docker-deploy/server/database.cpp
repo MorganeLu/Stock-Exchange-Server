@@ -12,6 +12,14 @@ void getResult(connection *C, string sql, result &res){
     W.commit();
 }
 
+string getCurrTime(){
+    std::time_t currentTime = std::time(nullptr);
+    struct tm *localTime = localtime(&currentTime);
+
+    std::time_t utcTime = std::mktime(localTime);
+    return std::asctime(std::gmtime(&utcTime));
+}
+
 void createTable(string SQLfile, connection *C){
     string sql;
     string curr;
@@ -163,12 +171,12 @@ string cancelOrder(connection *C, int account_id, int trans_id){
     // find trans order
     string sql;
     sql = "SELECT ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS"
-        "FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + ";";
+        "FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=OPEN;";
     result res;
     getResult(C, sql, res);
     if(res.size()!=1){
         return "<error></error>";
-        // TBD
+        // TBD order not exist
     }
     int account = res.at(0).at(0).as<int>();
     int stock_id = res.at(0).at(1).as<int>();
@@ -189,6 +197,9 @@ string cancelOrder(connection *C, int account_id, int trans_id){
         sql = "INSERT INTO POSITION VALUES (" + to_string(stock_id) + to_string(account_id) + to_string(amount) + ");";
         executeSQL(C, sql);
     }
+    // order status cancel
+    sql = "UPDATE ORDER SET STATUSS=CANCELED WHERAE ORDER.TRANS_ID=" + to_string(trans_id) + ";";
+    executeSQL(C, sql);
 
     return "<canceled>xxx</canceled>"; //TBD
 }
@@ -207,6 +218,7 @@ string executeOrder(connection *C, string symbol, int account_id, float amount, 
         // TBD
     }
 
+    int stock_id;
     if(amount > 0){ // buy
         // check balance and substract
         sql = "SELECT BALANCE FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
@@ -228,7 +240,7 @@ string executeOrder(connection *C, string symbol, int account_id, float amount, 
             // TBD: account dont have this stock
         }
         int original_amount = res.at(0).at(0).as<int>();
-        int stock_id = res.at(0).at(1).as<int>();
+        stock_id = res.at(0).at(1).as<int>();
         if(original_amount < amount){
             return "<error></error>\n";
             //TBD
@@ -243,6 +255,11 @@ string executeOrder(connection *C, string symbol, int account_id, float amount, 
             executeSQL(C, sql);
         }
     }
+    
+    // add new order
+    sql = "INSERT INTO ORDER VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount) 
+        + "," + to_string(price) + ", OPEN, " + getCurrTime() + ");";
+    executeSQL(C, sql);
 
     // check whether overlap and need execute
     // TBD
@@ -252,9 +269,51 @@ string executeOrder(connection *C, string symbol, int account_id, float amount, 
     return "";
 }
 
-string query(connection *C, string tableName){
+string query(connection *C, int trans_id, int account_id){
+    string msg = "<status id= " + to_string(trans_id) + ">\n";
+    // check account
+    string sql;
+    sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
+    result res;
+    getResult(C, sql, res);
+    if(res.size() == 0){
+        return "<error>xxx</error>\n"; 
+        // TBD account not exist
+    }
+
+    // check trans_id
+    sql = "SELECT ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS"
+        "FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + ";";
+    getResult(C, sql, res);
+    if(res.size()!=1){
+        return "<error></error>";
+        // TBD order not exist
+    }
+
+    // select
+    sql = "SELECT ORDER.STOCK_ID, ORDER.AMOUNT, ORDER.PRICE, ORDER_TIME FROM ORDER WHERE "
+        "ORDER.TRANS_ID=" + to_string(trans_id) + ";";
+    getResult(C, sql, res);
+    if(res.size()==0){
+        return "<error></error>";
+        // TBD order not exist
+    }
+
+    // find open
+    sql = "SELECT ORDER.AMOUNT FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=OPEN;";
+    getResult(C, sql, res);
+    msg += "/r<open shares=" + to_string(res.at(0).at(0).as<int>()) + "/>\n";
+
+    // find cancel
+    sql = "SELECT ORDER.AMOUNT, ORDER_TIME FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=CANCELED;";
+    getResult(C, sql, res);
+    msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " time=" + to_string(res.at(0).at(1).as<string>()) + "/>\n";
+
+    // find execute
+    sql = "SELECT ORDER.AMOUNT, ORDER.PRICE, ORDER_TIME FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=EXECUTED;";
+    getResult(C, sql, res);
+    msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " price=" + to_string(res.at(0).at(1).as<int>())+ " time=" + to_string(res.at(0).at(2).as<string>()) + "/>\n";
     
-
-
-    return "";
+    msg += "</status>";
+    return msg;
 }
