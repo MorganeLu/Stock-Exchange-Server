@@ -81,14 +81,14 @@ void Server::run() {
         // parse XML TBD: 需要判断收到的长度啥的
         XMLHandler xmlhandler;
         std::string request = xmlhandler.receiveRequest(client_fd);
-        cout<<request<<endl;
+        cout << request << endl;
 
         connection* C;
 
         try {
             //Establish a connection to the database
             //Parameters: database name, user name, user password
-            C = new connection("dbname=stock user=postgres password=passw0rd");
+            C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
             if (C->is_open()) {
                 cout << "Opened database successfully: " << C->dbname() << endl;
             }
@@ -101,8 +101,13 @@ void Server::run() {
             cerr << e.what() << std::endl;
             return;
         }
+        createTable("sql/account.sql", C);
+        createTable("sql/stock.sql", C);
+        createTable("sql/position.sql", C);
+        createTable("sql/order.sql", C);
+
         string response = xmlhandler.handleXML(C, request);
-        cout<<response<<endl;
+        cout << response << endl;
 
         C->disconnect();
 
