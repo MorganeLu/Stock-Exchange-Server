@@ -4,12 +4,18 @@
 #include "database.hpp"
 #include <pqxx/pqxx>
 #include <string>
+#include<vector>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
 class XMLHandler {
 public:
     XMLHandler() {}
     ~XMLHandler() {}
 
+    std::string receiveRequest(int client_fd);
     std::string handleXML(connection* C, const std::string& xmlContent);
 
 private:
