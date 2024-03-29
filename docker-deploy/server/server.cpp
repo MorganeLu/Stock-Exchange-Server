@@ -1,5 +1,5 @@
 #include "server.hpp"
-#include "XMLHandler.hpp"
+
 
 int Server::connect2Client() {
     // std::cout<<socket_fd<<std::endl;
@@ -81,6 +81,7 @@ void Server::run() {
         // parse XML TBD: 需要判断收到的长度啥的
         XMLHandler xmlhandler;
         std::string request = xmlhandler.receiveRequest(client_fd);
+        cout<<request<<endl;
 
         connection* C;
 
@@ -101,13 +102,14 @@ void Server::run() {
             return;
         }
         string response = xmlhandler.handleXML(C, request);
+        cout<<response<<endl;
+
         C->disconnect();
 
         const char* response_xml = response.c_str();
         send(client_fd, response_xml, strlen(response_xml), 0);
 
         freeaddrinfo(host_info_list);
-        // 是不是应该client_fd?
-        close(socket_fd);
+        close(client_fd);
     }
 }

@@ -1,7 +1,7 @@
 #include "XMLHandler.hpp"
 #include <iostream>
 
-std::string receiveRequest(int client_fd) {
+std::string XMLHandler::receiveRequest(int client_fd) {
     // vector<char> req(BUFF_SIZE, 0);
     // int len = recv(client_fd, req.data(), BUFF_SIZE, 0);
     // if (len <= 0) {
@@ -148,10 +148,8 @@ std::string XMLHandler::cancelOrderHelper(connection* C, const pugi::xml_node& c
 }
 
 std::string XMLHandler::queryOrder(connection* C, const pugi::xml_node& queryNode) {
-    std::string orderId = queryNode.attribute("id").value();
+    int orderId = queryNode.attribute("id").as_int();
     int accountId = queryNode.parent().attribute("id").as_int();
-    std::string rseponse;
-    // TBD
-    return rseponse;
+    return query(C, orderId, accountId);
 }
 

@@ -13,7 +13,7 @@
 int main(int argc, char *argv[]){
     Client myclient(argv[1], argv[2]);
 
-    string filename = "./xml/test.cml";
+    string filename = "./xml/create01.xml";
     std::ifstream file(filename);
     std::stringstream buffer;
     if (file) {
