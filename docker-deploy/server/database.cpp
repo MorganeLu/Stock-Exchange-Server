@@ -142,36 +142,6 @@ string openOrder(connection* C, string symbol, int account_id, int trans_id, flo
 }
 
 string cancelOrder(connection* C, int account_id, int trans_id) {
-    // // check amount
-    // string sql;
-    // sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT_ID ="+ to_string(account_id) + ";";
-    // result res;
-    // getResult(C, sql, res);
-    // if(res.size() != 0){
-    //     return "<error id=\"" + to_string(account_id) + "\">Account already exists</error>\n";
-    // }
-    // // check if not have this stock and enough amount in position
-    // sql = "SELECT * FROM POSITION, STOCK WHERE STOCK.SYMBOL=" + to_string(symbol)+ " AND POSITION.STOCK_ID=STOCK.STOCK_ID" +
-    //     " AND POSITION.ACCOUNT_ID="+ to_string(account_id) + " AND POSITION.AMOUNT>=" + to_string(amount)+";";
-    // getResult(C, sql, res);
-    // if(res.size()==0){
-    //     return "<error id=\"" + to_string(account_id) + "\">Stock amount is not enough or not have this stock</error>\n";
-    // }
-    // sql = "SELECT * FROM POSITION, STOCK WHERE STOCK.SYMBOL="+to_string(symbol)+ " AND POSITION.ACCOUNT_ID="+ to_string(account_id)+
-    //     " AND POSITION.STOCK_ID=STOCK.STOCK_ID AND POSITION.AMOUNT=" + to_string(amount)+";";
-    // getResult(C, sql, res);
-    // if(res.size()!=0){  // cancel all
-    //     // cancel the order directly TBD
-    //     sql = "DELETE FROM POSITION WHERE STOCK.SYMBOL=;" + to_string(symbol) + " AND STOCK.STOCK_ID=POSITION.STOCK_ID "
-    //         "AND POSITION.ACCOUNT_ID="+ to_string(account_id) +";";
-    //     return "\n";
-    // }else{  // cancel part
-    //     sql = "SELECT COUNT(*) FROM STOCK WHERE SYMBOL ="+ to_string(symbol) + ";";
-    //     getResult(C, sql, res);
-    //     int stock_id = res.at(0).at(0).as<int>();
-    //     sql = "UPDATE POSITION SET POSITION.AMOUNT=POSITION.AMOUNT-" + to_string(amount) + "WHERE your_condition;"
-    // }
-
     // find trans order
     string sql;
     sql = "SELECT ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS"
