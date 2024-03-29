@@ -49,8 +49,8 @@ void Client::run(string request){
 
     char response[512];
     recv(socket_fd, response, 512, 0);
+    cout << "REPSONSE:\n"<< endl;
     cout << response << endl;
 
-    freeaddrinfo(host_info_list);
     close(socket_fd);
 }
