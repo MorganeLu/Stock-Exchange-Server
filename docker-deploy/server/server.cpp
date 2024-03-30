@@ -74,20 +74,12 @@ void Server::run() {
         exit(EXIT_FAILURE);
     }
 
-    while (true) {
-        int client_fd = connect2Client();
-        // char request[512];
-        // recv(client_fd, request, 512, 0);
-        // parse XML TBD: 需要判断收到的长度啥的
-        XMLHandler xmlhandler;
-        std::string request = xmlhandler.receiveRequest(client_fd);
-        cout << request << endl;
-
-        connection* C;
-
-        try {
+    connection* C;
+    try {
             //Establish a connection to the database
             //Parameters: database name, user name, user password
+            // C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
+            
             C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
             if (C->is_open()) {
                 cout << "Opened database successfully: " << C->dbname() << endl;
@@ -106,15 +98,24 @@ void Server::run() {
         // createTable("sql/position.sql", C);
         // createTable("sql/order.sql", C);
 
+    while (true) {
+        int client_fd = connect2Client();
+        // char request[512];
+        // recv(client_fd, request, 512, 0);
+        // parse XML TBD: 需要判断收到的长度啥的
+        XMLHandler xmlhandler;
+        std::string request = xmlhandler.receiveRequest(client_fd);
+        // cout << request << endl;
+        
         string response = xmlhandler.handleXML(C, request);
         cout << response << endl;
-
-        C->disconnect();
 
         const char* response_xml = response.c_str();
         send(client_fd, response_xml, strlen(response_xml), 0);
 
-        freeaddrinfo(host_info_list);
+        // freeaddrinfo(host_info_list);
         close(client_fd);
     }
+
+    C->disconnect();
 }
