@@ -198,10 +198,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         sql = "UPDATE ACCOUNT SET BALANCE=BALANCE-" + to_string(amount * price) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
         executeSQL(C, sql);
 
-        // 需要加上这个吗？
-        // Add or update position
-        // sql = "INSERT INTO POSITION (STOCK_ID, ACCOUNT_ID, AMOUNT) VALUES (" + to_string(stock_id) + ", " + to_string(account_id) + ", " + to_string(amount) +
-        //     ") ON CONFLICT (STOCK_ID, ACCOUNT_ID) DO UPDATE SET AMOUNT = POSITION.AMOUNT + " + to_string(amount) + ";";
+        matchSellOrders(C, account_id, stock_id, symbol, amount, price);
     }
     else {  // sell
         // 是否需要将amount转为正数?
@@ -229,6 +226,8 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
                 " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(account_id) + ";";
             executeSQL(C, sql);
         }
+
+        matchBuyOrders(C, account_id, stock_id, symbol, amount, price);
     }
 
     // add new order
@@ -251,7 +250,11 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     //         
     //}
 
-    // 是不是应该放到 if sell 里?
+    return "<opened sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) + "\" limit=\"" +
+        to_string(price) + "\" id=\"" + to_string(trans_id) + "\"/>\n";
+}
+
+void matchBuyOrders(connection* C, int sellerId, int stock_id, string symbol, float amount, int price) {
     work W(*C);
     // find all matched buy orders
     string sqlMatch = "SELECT TRANS_ID, ACCOUNT_ID, AMOUNT, PRICE FROM \"ORDER\" "
@@ -271,14 +274,20 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
             int executionPrice = order["ORDER_TIME"].as<string>() <= getCurrTime() ? matchingPrice : price;
             float executionAmount = min(abs(amount), abs(matchingAmount));
 
-            updateBalancesAndPositions(W, C, matchingAccountId, account_id, symbol, executionAmount, executionPrice);
+            string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(matchingAmount * matchingPrice) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
+            executeSQL(C, refundBuyerBalance);
 
-            markOrdersAsExecuted(W, order["TRANS_ID"].as<int>(), account_id, executionAmount, executionPrice);
+            string refundSellerPosition = "UPDATE POSITION.AMOUNT SET POSITION.AMOUNT=POSITION.AMOUNT+" + to_string(amount) +
+                " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
+            executeSQL(C, refundSellerPosition);
+
+            updateBalancesAndPositions(W, C, matchingAccountId, sellerId, symbol, executionAmount, executionPrice);
+
+            markOrdersAsExecuted(W, order["TRANS_ID"].as<int>(), sellerId, executionAmount, executionPrice);
 
             amount -= executionAmount;
-
             if (amount == 0) {
-                string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(account_id) + ";";
+                string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
                 W.exec(deletesql);
                 W.commit();
                 break;
@@ -286,16 +295,66 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         }
     }
     if (amount != 0) {
-        sql = "INSERT INTO ORDER VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount)
+        string sql = "INSERT INTO ORDER VALUES (" + to_string(sellerId) + "," + to_string(stock_id) + "," + to_string(amount)
             + "," + to_string(price) + ", OPEN, " + getCurrTime() + ");";
         executeSQL(C, sql);
     }
     W.commit();
 
-    //  应该返回什么?
-    // return "<opened sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) + "\" limit=\"" +
-    //     to_string(price) + "\" id=\"" + to_string(n) + "\"/>\n";
-    return "";
+}
+
+void matchSellOrders(connection* C, int buyerId, int stock_id, string symbol, float amount, int price) {
+    work W(*C);
+    // find all matched sell orders
+    string sqlMatch = "SELECT TRANS_ID, ACCOUNT_ID, AMOUNT, PRICE FROM \"ORDER\" "
+        "WHERE SYMBOL = '" + symbol + "' AND "
+        "STATUSS = 'OPEN' AND " +
+        "(AMOUNT < 0  AND PRICE <= " + to_string(price) + ") "
+        "ORDER BY ORDER_TIME ASC, PRICE ASC;";
+
+    result matchingOrders = W.exec(sqlMatch);
+
+    if (!matchingOrders.empty()) {
+        for (auto order : matchingOrders) {
+            int matchingAccountId = order["ACCOUNT_ID"].as<int>();
+            float matchingAmount = order["AMOUNT"].as<float>();
+            int matchingPrice = order["PRICE"].as<int>();
+
+            int executionPrice = order["ORDER_TIME"].as<string>() <= getCurrTime() ? matchingPrice : price;
+            float executionAmount = min(abs(amount), abs(matchingAmount));
+
+            string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(amount * price) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(buyerId) + ";";
+            executeSQL(C, refundBuyerBalance);
+
+            string refundSellerPosition = "UPDATE POSITION.AMOUNT SET POSITION.AMOUNT=POSITION.AMOUNT+" + to_string(matchingAmount) +
+                " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
+            executeSQL(C, refundSellerPosition);
+
+            updateBalancesAndPositions(W, C, buyerId, matchingAccountId, symbol, executionAmount, executionPrice);
+
+            markOrdersAsExecuted(W, order["TRANS_ID"].as<int>(), buyerId, executionAmount, executionPrice);
+
+            amount += executionAmount;
+
+            string getSellerAmount = "SELECT POSITION.AMOUNT FROM POSITION WHERE POSITION.STOCK_ID="
+                + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
+            result sellerOrder = W.exec(getSellerAmount);
+            float sellerAmount = sellerOrder[0]['AMOUNT'].as<float>();
+            if (sellerAmount == 0) {
+                string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
+                W.exec(deletesql);
+                W.commit();
+                break;
+            }
+        }
+    }
+    if (amount != 0) {
+        string sql = "INSERT INTO ORDER VALUES (" + to_string(buyerId) + "," + to_string(stock_id) + "," + to_string(amount)
+            + "," + to_string(price) + ", OPEN, " + getCurrTime() + ");";
+        executeSQL(C, sql);
+    }
+    W.commit();
+
 }
 
 
