@@ -233,8 +233,13 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
 
     // add new order
     sql = "INSERT INTO ORDER VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount)
-        + "," + to_string(price) + ", OPEN, " + getCurrTime() + ");";
-    executeSQL(C, sql);
+        + "," + to_string(price) + ", OPEN, " + getCurrTime() + ") RETURNING ORDER.TRANS_ID;";
+    // executeSQL(C, sql);
+    getResult(C, sql, res);
+    int trans_id = 0;
+    for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
+        trans_id = it["TRANS_ID"].as<int>();
+    }
 
     // check whether overlap and need execute
     // TBD
