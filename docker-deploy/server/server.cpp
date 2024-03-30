@@ -98,23 +98,43 @@ void Server::run() {
         // createTable("sql/position.sql", C);
         // createTable("sql/order.sql", C);
 
-    while (true) {
-        int client_fd = connect2Client();
-        // char request[512];
-        // recv(client_fd, request, 512, 0);
-        // parse XML TBD: 需要判断收到的长度啥的
-        XMLHandler xmlhandler;
-        std::string request = xmlhandler.receiveRequest(client_fd);
-        // cout << request << endl;
+    // while (true) {
+    //     int client_fd = connect2Client();
+    //     // parse XML
+    //     XMLHandler xmlhandler;
+    //     std::string request = xmlhandler.receiveRequest(client_fd);
         
-        string response = xmlhandler.handleXML(C, request);
-        cout << response << endl;
+    //     string response = xmlhandler.handleXML(C, request);
+    //     cout << response << endl;
 
-        const char* response_xml = response.c_str();
-        send(client_fd, response_xml, strlen(response_xml), 0);
+    //     const char* response_xml = response.c_str();
+    //     send(client_fd, response_xml, strlen(response_xml), 0);
 
-        // freeaddrinfo(host_info_list);
-        close(client_fd);
+    //     // freeaddrinfo(host_info_list);
+    //     close(client_fd);
+    // }
+
+    // 创建一个线程池来处理客户端连接
+    const int THREAD_POOL_SIZE = 5;
+    std::vector<std::thread> threads;
+    for (int i = 0; i < THREAD_POOL_SIZE; ++i) {
+        threads.emplace_back([this, C]() {
+            while (true) {
+                int client_fd = connect2Client();
+                XMLHandler xmlhandler;
+                std::string request = xmlhandler.receiveRequest(client_fd);
+                string response = xmlhandler.handleXML(C, request);
+                cout << response << endl;
+                const char* response_xml = response.c_str();
+                send(client_fd, response_xml, strlen(response_xml), 0);
+                close(client_fd);
+            }
+        });
+    }
+
+    // 等待所有线程完成
+    for (auto& thread : threads) {
+        thread.join();
     }
 
     C->disconnect();

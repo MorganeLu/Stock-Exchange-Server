@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <thread>
 #include "XMLHandler.hpp"
 
 using namespace std;

@@ -13,11 +13,6 @@ void getResult(connection* C, string sql, result& res) {
 }
 
 time_t getCurrTime() {
-    // std::time_t currentTime = std::time(nullptr);
-    // struct tm* localTime = localtime(&currentTime);
-
-    // std::time_t utcTime = std::mktime(localTime);
-    // return std::asctime(std::gmtime(&utcTime));
     std::time_t current_time = std::time(nullptr);
     return current_time;
 }
@@ -72,7 +67,7 @@ string addPosition(connection* C, string symbol, int account_id, float amount) {
 
     string sql;
     // check account
-    sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT_ID =" + to_string(account_id) + ";";
+    sql = "SELECT ACCOUNT.ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID =" + to_string(account_id) + ";";
     result res;
     getResult(C, sql, res);
     if (res.size() == 0) {
