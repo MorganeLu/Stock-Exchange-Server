@@ -169,7 +169,7 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
         executeSQL(C, sql);
     }
     // order status cancel
-    sql = "UPDATE ORDERS SET STATUSS=CANCELED WHERAE ORDERS.TRANS_ID=" + to_string(trans_id) + ";";
+    sql = "UPDATE ORDERS SET STATUSS=CANCELED AND ORDER_TIME=" +  to_string(getCurrTime())+ " WHERAE ORDERS.TRANS_ID=" + to_string(trans_id) + ";";
     executeSQL(C, sql);
 
     return "<canceled id=\"" + to_string(trans_id) + "\">xxx</canceled>";
@@ -263,8 +263,8 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
 void matchBuyOrders(connection* C, int sellerId, int stock_id, string symbol, float amount, int price) {
     work W(*C);
     // find all matched buy orders
-    string sqlMatch = "SELECT TRANS_ID, ACCOUNT_ID, AMOUNT, PRICE FROM ORDERS "
-        "WHERE SYMBOL = '" + symbol + "' AND "
+    string sqlMatch = "SELECT TRANS_ID, ACCOUNT_ID, AMOUNT, PRICE FROM ORDERS , STOCK "
+        "WHERE STOCK.SYMBOL = '" + symbol + "' AND STOCK.STOCK_ID=ORDERS.STOCK_ID AND "
         "STATUSS = \'OPEN\' AND " +
         "(AMOUNT > 0  AND PRICE >= " + to_string(price) + ") "
         "ORDERS BY ORDER_TIME ASC, PRICE ASC;";
@@ -313,8 +313,8 @@ void matchBuyOrders(connection* C, int sellerId, int stock_id, string symbol, fl
 void matchSellOrders(connection* C, int buyerId, int stock_id, string symbol, float amount, int price) {
     work W(*C);
     // find all matched sell orders
-    string sqlMatch = "SELECT TRANS_ID, ACCOUNT_ID, AMOUNT, PRICE FROM ORDERS "
-        "WHERE SYMBOL = '" + symbol + "' AND "
+    string sqlMatch = "SELECT TRANS_ID, ACCOUNT_ID, AMOUNT, PRICE FROM ORDERS, STOCK "
+        "WHERE STOCK.SYMBOL = '" + symbol + "' AND STOCK.STOCK_ID=ORDERS.STOCK_ID AND "
         "STATUSS = 'OPEN' AND " +
         "(AMOUNT < 0  AND PRICE <= " + to_string(price) + ") "
         "ORDER BY ORDER_TIME ASC, PRICE ASC;";
@@ -418,7 +418,7 @@ string query(connection* C, int trans_id, int account_id) {
     }
 
     // check trans_id
-    sql = "SELECT ORDERS.STOCK_ID, ORDERS.AMOUNT, ORDERS.PRICE, ORDERS_TIME FROM ORDERS WHERE "
+    sql = "SELECT ORDERS.STOCK_ID, ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE "
         "ORDERS.TRANS_ID=" + to_string(trans_id) + ";";
     getResult(C, sql, res);
     if (res.size() == 0) {
@@ -431,7 +431,7 @@ string query(connection* C, int trans_id, int account_id) {
     sql = "SELECT ORDERS.AMOUNT FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'OPEN\';";
     getResult(C, sql, res);
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "/r<open shares=" + to_string(it[0].as<int>()) + "/>\n";
+        msg += "  <open shares=" + to_string(it[0].as<int>()) + "/>\n";
     }
     // msg += "/r<open shares=" + to_string(res.at(0).at(0).as<int>()) + "/>\n";
 
@@ -439,7 +439,7 @@ string query(connection* C, int trans_id, int account_id) {
     sql = "SELECT ORDERS.AMOUNT, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'CANCELED\';";
     getResult(C, sql, res);
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "/r<canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
+        msg += "  <canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
     }
     // msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " time=" + to_string(res.at(0).at(1).as<string>()) + "/>\n";
 
@@ -447,7 +447,7 @@ string query(connection* C, int trans_id, int account_id) {
     sql = "SELECT ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'EXECUTED\';";
     getResult(C, sql, res);
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "/r<canceled shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
+        msg += "  <canceled shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
     }
     // msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " price=" + to_string(res.at(0).at(1).as<int>()) + " time=" + to_string(res.at(0).at(2).as<string>()) + "/>\n";
 

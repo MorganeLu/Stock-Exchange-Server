@@ -43,7 +43,10 @@ std::string XMLHandler::handleXML(connection* C, const std::string& xmlContent) 
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(xmlContent.c_str());
     std::string response = "";
+    cout << "result: "<< result << endl;
     if (!result || xmlContent.empty()) {
+        cout << "result: "<< result << endl;
+        cout << "xmlContent: "<<xmlContent << endl;
         response += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<error>Illegal "
             "XML Format</error>\n";
     }
