@@ -10,10 +10,10 @@
 #include <arpa/inet.h>
 #include "client.hpp"
 
-int main(int argc, char *argv[]){
+int main(int argc, char* argv[]) {
     Client myclient(argv[1], argv[2]);
 
-    string filename = "./xml/create01.xml";
+    string filename = "./xml/transactions01.xml";
     std::ifstream file(filename);
     std::stringstream buffer;
     if (file) {

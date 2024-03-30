@@ -246,8 +246,94 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     //         
     //}
 
+    // 是不是应该放到 if sell 里?
+    work W(*C);
+    // find all matched buy orders
+    string sqlMatch = "SELECT TRANS_ID, ACCOUNT_ID, AMOUNT, PRICE FROM \"ORDER\" "
+        "WHERE SYMBOL = '" + symbol + "' AND "
+        "STATUSS = 'OPEN' AND " +
+        "(AMOUNT > 0  AND PRICE >= " + to_string(price) + ") "
+        "ORDER BY ORDER_TIME ASC, PRICE ASC;";
+
+    result matchingOrders = W.exec(sqlMatch);
+
+    if (!matchingOrders.empty()) {
+        for (auto order : matchingOrders) {
+            int matchingAccountId = order["ACCOUNT_ID"].as<int>();
+            float matchingAmount = order["AMOUNT"].as<float>();
+            int matchingPrice = order["PRICE"].as<int>();
+
+            int executionPrice = order["ORDER_TIME"].as<string>() <= getCurrTime() ? matchingPrice : price;
+            float executionAmount = min(abs(amount), abs(matchingAmount));
+
+            updateBalancesAndPositions(W, C, matchingAccountId, account_id, symbol, executionAmount, executionPrice);
+
+            markOrdersAsExecuted(W, order["TRANS_ID"].as<int>(), account_id, executionAmount, executionPrice);
+
+            amount -= executionAmount;
+
+            if (amount == 0) {
+                string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(account_id) + ";";
+                W.exec(deletesql);
+                W.commit();
+                break;
+            }
+        }
+    }
+    if (amount != 0) {
+        sql = "INSERT INTO ORDER VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount)
+            + "," + to_string(price) + ", OPEN, " + getCurrTime() + ");";
+        executeSQL(C, sql);
+    }
+    W.commit();
+
+    //  应该返回什么?
+    // return "<opened sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) + "\" limit=\"" +
+    //     to_string(price) + "\" id=\"" + to_string(n) + "\"/>\n";
     return "";
 }
+
+
+void updateBalancesAndPositions(work& W, connection* C, int buyerId, int sellerId, string symbol, float amount, int price) {
+    float totalCost = amount * price;
+
+    // update buyer's balance (subtract total cost)
+    string updateBuyerBalance = "UPDATE ACCOUNT SET BALANCE = BALANCE - " + to_string(totalCost) +
+        " WHERE ACCOUNT_ID = " + to_string(buyerId) + ";";
+    W.exec(updateBuyerBalance);
+
+    // update seller's balance (add total cost)
+    string updateSellerBalance = "UPDATE ACCOUNT SET BALANCE = BALANCE + " + to_string(totalCost) +
+        " WHERE ACCOUNT_ID = " + to_string(sellerId) + ";";
+    W.exec(updateSellerBalance);
+
+    string sql = "SELECT COUNT(*) FROM STOCK WHERE SYMBOL =\'" + symbol + "\';";
+    result res;
+    getResult(C, sql, res);
+    int stock_id = res.at(0).at(0).as<int>();
+
+    // update or insert buyer's position
+    string updateBuyerPosition = "INSERT INTO POSITION (STOCK_ID, ACCOUNT_ID, AMOUNT) VALUES (" +
+        to_string(stock_id) + ", " + to_string(buyerId) + ", " + to_string(amount) +
+        ") ON CONFLICT (STOCK_ID, ACCOUNT_ID) DO UPDATE SET " +
+        "AMOUNT = POSITION.AMOUNT + EXCLUDED.AMOUNT;";
+    W.exec(updateBuyerPosition);
+
+    // update seller's position
+    string updateSellerPosition = "UPDATE POSITION SET AMOUNT = AMOUNT - " + to_string(amount) +
+        " WHERE ACCOUNT_ID = " + to_string(sellerId) +
+        " AND STOCK_ID = (SELECT STOCK_ID FROM STOCK WHERE SYMBOL = '" + symbol + "');";
+    W.exec(updateSellerPosition);
+}
+
+void markOrdersAsExecuted(work& W, int orderId, int accountId, float amount, int price) {
+    string markOrderExecuted = "UPDATE \"ORDER\" SET STATUSS = 'EXECUTED', AMOUNT = AMOUNT - " + to_string(amount) +
+        ", PRICE = " + to_string(price) +
+        " WHERE TRANS_ID = " + to_string(orderId) +
+        " AND ACCOUNT_ID = " + to_string(accountId) + ";";
+    W.exec(markOrderExecuted);
+}
+
 
 string query(connection* C, int trans_id, int account_id) {
     string msg = "<status id=" + to_string(trans_id) + ">\n";
