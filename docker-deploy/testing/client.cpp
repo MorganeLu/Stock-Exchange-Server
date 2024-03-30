@@ -42,7 +42,7 @@ int Client::connect2Server(){
 void Client::run(string request){
     buildClient();
     connect2Server();
-    cout << request.size() << endl;
+    // cout << request.size() << endl;
     cout << request << endl;
 
     send(socket_fd, request.c_str(), request.length(), 0);

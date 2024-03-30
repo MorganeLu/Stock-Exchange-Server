@@ -1,5 +1,0 @@
-<transactions id="">
-  <order sym="SYM" amount="AMT" limit="LMT"/>
-  <query id="TRANS_ID"/>
-  <cancel id="TRANS_ID"/>
-</transactions>

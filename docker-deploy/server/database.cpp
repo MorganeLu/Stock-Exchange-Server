@@ -12,12 +12,14 @@ void getResult(connection* C, string sql, result& res) {
     W.commit();
 }
 
-string getCurrTime() {
-    std::time_t currentTime = std::time(nullptr);
-    struct tm* localTime = localtime(&currentTime);
+time_t getCurrTime() {
+    // std::time_t currentTime = std::time(nullptr);
+    // struct tm* localTime = localtime(&currentTime);
 
-    std::time_t utcTime = std::mktime(localTime);
-    return std::asctime(std::gmtime(&utcTime));
+    // std::time_t utcTime = std::mktime(localTime);
+    // return std::asctime(std::gmtime(&utcTime));
+    std::time_t current_time = std::time(nullptr);
+    return current_time;
 }
 
 void createTable(string SQLfile, connection* C) {
@@ -82,7 +84,7 @@ string addPosition(connection* C, string symbol, int account_id, float amount) {
     // result res;
     getResult(C, sql, res);
     if (res.size() == 0) {
-        sql = "INSERT INTO STOCK (SYMBOL) VALUES (" + symbol + ");";
+        sql = "INSERT INTO STOCK (SYMBOL) VALUES (\'" + symbol + "\');";
         executeSQL(C, sql);
     }
 
@@ -139,8 +141,8 @@ string openOrder(connection* C, string symbol, int account_id, int trans_id, flo
 string cancelOrder(connection* C, int account_id, int trans_id) {
     // find trans order
     string sql;
-    sql = "SELECT ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS"
-        "FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=OPEN;";
+    sql = "SELECT ORDERS.ACCOUNT_ID, ORDERS.STOCK_ID, ORDERS.AMOUNT, ORDERS.PRICE, STATUSS"
+        " FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'OPEN\';";
     result res;
     getResult(C, sql, res);
     if (res.size() != 1) {
@@ -156,7 +158,7 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
     }
 
     if (amount > 0) {     // buy
-        // add balance
+        // add balance, REFUND
         sql = "UPDATE ACCOUNT SET BALANCE=BALANCR+" + to_string(price * amount) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
         executeSQL(C, sql);
 
@@ -167,7 +169,7 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
         executeSQL(C, sql);
     }
     // order status cancel
-    sql = "UPDATE ORDER SET STATUSS=CANCELED WHERAE ORDER.TRANS_ID=" + to_string(trans_id) + ";";
+    sql = "UPDATE ORDERS SET STATUSS=CANCELED WHERAE ORDERS.TRANS_ID=" + to_string(trans_id) + ";";
     executeSQL(C, sql);
 
     return "<canceled id=\"" + to_string(trans_id) + "\">xxx</canceled>";
@@ -185,7 +187,11 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         return "<error id=\"" + to_string(account_id) + "\">Ammount cannot be 0</error>\n";
     }
 
-    int stock_id;
+    sql = "SELECT STOCK.STOCK_ID FROM STOCK WHERE STOCK.SYMBOL=\'" + to_string(symbol) + "\';";
+    getResult(C, sql, res);
+    int stock_id = res.at(0).at(0).as<int>();
+    // std::cout << stock_id << endl;
+
     if (amount > 0) { // buy
         // check balance and substract
         sql = "SELECT BALANCE FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
@@ -211,7 +217,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
             return "<error id=\"" + to_string(account_id) + "\">Account does not have this stock</error>\n";
         }
         int original_amount = res.at(0).at(0).as<int>();
-        int stock_id = res.at(0).at(1).as<int>();
+        stock_id = res.at(0).at(1).as<int>();
         if (original_amount < amount) {
             return "<error id=\"" + to_string(account_id) + "\">Amount is not enough</error>\n";
         }
@@ -231,8 +237,8 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     }
 
     // add new order
-    sql = "INSERT INTO ORDER VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount)
-        + "," + to_string(price) + ", OPEN, " + getCurrTime() + ") RETURNING ORDER.TRANS_ID;";
+    sql = "INSERT INTO ORDERS (ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount)
+        + "," + to_string(price) + ", \'OPEN\', " + to_string(getCurrTime()) + ") RETURNING ORDERS.TRANS_ID;";
     // executeSQL(C, sql);
     getResult(C, sql, res);
     int trans_id = 0;
@@ -257,6 +263,55 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
 void matchBuyOrders(connection* C, int sellerId, int stock_id, string symbol, float amount, int price) {
     work W(*C);
     // find all matched buy orders
+    string sqlMatch = "SELECT TRANS_ID, ACCOUNT_ID, AMOUNT, PRICE FROM ORDERS "
+        "WHERE SYMBOL = '" + symbol + "' AND "
+        "STATUSS = \'OPEN\' AND " +
+        "(AMOUNT > 0  AND PRICE >= " + to_string(price) + ") "
+        "ORDERS BY ORDER_TIME ASC, PRICE ASC;";
+
+    result matchingOrders = W.exec(sqlMatch);
+
+    if (!matchingOrders.empty()) {
+        for (auto order : matchingOrders) {
+            int matchingAccountId = order["ACCOUNT_ID"].as<int>();
+            float matchingAmount = order["AMOUNT"].as<float>();
+            int matchingPrice = order["PRICE"].as<int>();
+
+            int executionPrice = order["ORDER_TIME"].as<int>() <= getCurrTime() ? matchingPrice : price;
+            float executionAmount = min(abs(amount), abs(matchingAmount));
+
+            string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(matchingAmount * matchingPrice) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
+            executeSQL(C, refundBuyerBalance);
+
+            string refundSellerPosition = "UPDATE POSITION.AMOUNT SET POSITION.AMOUNT=POSITION.AMOUNT+" + to_string(amount) +
+                " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
+            executeSQL(C, refundSellerPosition);
+
+            updateBalancesAndPositions(W, C, matchingAccountId, sellerId, symbol, executionAmount, executionPrice);
+
+            markOrdersAsExecuted(W, order["TRANS_ID"].as<int>(), sellerId, executionAmount, executionPrice);
+
+            amount -= executionAmount;
+            if (amount == 0) {
+                string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
+                W.exec(deletesql);
+                W.commit();
+                break;
+            }
+        }
+    }
+    if (amount != 0) {
+        string sql = "INSERT INTO ORDER VALUES (" + to_string(sellerId) + "," + to_string(stock_id) + "," + to_string(amount)
+            + "," + to_string(price) + ", OPEN, " + getCurrTime() + ");";
+        executeSQL(C, sql);
+    }
+    W.commit();
+
+}
+
+void matchSellOrders(connection* C, int buyerId, int stock_id, string symbol, float amount, int price) {
+    work W(*C);
+    // find all matched sell orders
     string sqlMatch = "SELECT TRANS_ID, ACCOUNT_ID, AMOUNT, PRICE FROM \"ORDER\" "
         "WHERE SYMBOL = '" + symbol + "' AND "
         "STATUSS = 'OPEN' AND " +
@@ -274,18 +329,19 @@ void matchBuyOrders(connection* C, int sellerId, int stock_id, string symbol, fl
             int executionPrice = order["ORDER_TIME"].as<string>() <= getCurrTime() ? matchingPrice : price;
             float executionAmount = min(abs(amount), abs(matchingAmount));
 
-            string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(matchingAmount * matchingPrice) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
+            string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(amount * price) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(buyerId) + ";";
             executeSQL(C, refundBuyerBalance);
 
-            string refundSellerPosition = "UPDATE POSITION.AMOUNT SET POSITION.AMOUNT=POSITION.AMOUNT+" + to_string(amount) +
-                " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
+            string refundSellerPosition = "UPDATE POSITION.AMOUNT SET POSITION.AMOUNT=POSITION.AMOUNT+" + to_string(matchingAmount) +
+                " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
             executeSQL(C, refundSellerPosition);
 
-            updateBalancesAndPositions(W, C, matchingAccountId, sellerId, symbol, executionAmount, executionPrice);
+            updateBalancesAndPositions(W, C, buyerId, matchingAccountId, symbol, executionAmount, executionPrice);
 
-            markOrdersAsExecuted(W, order["TRANS_ID"].as<int>(), sellerId, executionAmount, executionPrice);
+            markOrdersAsExecuted(W, order["TRANS_ID"].as<int>(), buyerId, executionAmount, executionPrice);
 
-            amount -= executionAmount;
+            amount += executionAmount;
+
             if (amount == 0) {
                 string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
                 W.exec(deletesql);
@@ -349,8 +405,8 @@ void matchSellOrders(connection* C, int buyerId, int stock_id, string symbol, fl
         }
     }
     if (amount != 0) {
-        string sql = "INSERT INTO ORDER VALUES (" + to_string(buyerId) + "," + to_string(stock_id) + "," + to_string(amount)
-            + "," + to_string(price) + ", OPEN, " + getCurrTime() + ");";
+        string sql = "INSERT INTO ORDERS VALUES (" + to_string(buyerId) + "," + to_string(stock_id) + "," + to_string(amount)
+            + "," + to_string(price) + ", \'OPEN\', " + to_string(getCurrTime()) + ");";
         executeSQL(C, sql);
     }
     W.commit();
@@ -391,7 +447,7 @@ void updateBalancesAndPositions(work& W, connection* C, int buyerId, int sellerI
 }
 
 void markOrdersAsExecuted(work& W, int orderId, int accountId, float amount, int price) {
-    string markOrderExecuted = "UPDATE \"ORDER\" SET STATUSS = 'EXECUTED', AMOUNT = AMOUNT - " + to_string(amount) +
+    string markOrderExecuted = "UPDATE ORDERS SET STATUSS = 'EXECUTED', AMOUNT = AMOUNT - " + to_string(amount) +
         ", PRICE = " + to_string(price) +
         " WHERE TRANS_ID = " + to_string(orderId) +
         " AND ACCOUNT_ID = " + to_string(accountId) + ";";
@@ -410,10 +466,9 @@ string query(connection* C, int trans_id, int account_id) {
         return "<error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
     }
 
-    // 这一个和下面一个有什么区别？
     // check trans_id
-    sql = "SELECT ORDER.STOCK_ID, ORDER.AMOUNT, ORDER.PRICE, ORDER_TIME FROM ORDER WHERE "
-        "ORDER.TRANS_ID=" + to_string(trans_id) + ";";
+    sql = "SELECT ORDERS.STOCK_ID, ORDERS.AMOUNT, ORDERS.PRICE, ORDERS_TIME FROM ORDERS WHERE "
+        "ORDERS.TRANS_ID=" + to_string(trans_id) + ";";
     getResult(C, sql, res);
     if (res.size() == 0) {
         return "<error id=\"" + to_string(trans_id) + "\">Order not exists</error>";
@@ -422,7 +477,7 @@ string query(connection* C, int trans_id, int account_id) {
 
     // order可能split了，查询结果可能有多个
     // find open
-    sql = "SELECT ORDER.AMOUNT FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=OPEN;";
+    sql = "SELECT ORDERS.AMOUNT FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'OPEN\';";
     getResult(C, sql, res);
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
         msg += "/r<open shares=" + to_string(it[0].as<int>()) + "/>\n";
@@ -430,7 +485,7 @@ string query(connection* C, int trans_id, int account_id) {
     // msg += "/r<open shares=" + to_string(res.at(0).at(0).as<int>()) + "/>\n";
 
     // find cancel
-    sql = "SELECT ORDER.AMOUNT, ORDER_TIME FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=CANCELED;";
+    sql = "SELECT ORDERS.AMOUNT, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'CANCELED\';";
     getResult(C, sql, res);
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
         msg += "/r<canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
@@ -438,7 +493,7 @@ string query(connection* C, int trans_id, int account_id) {
     // msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " time=" + to_string(res.at(0).at(1).as<string>()) + "/>\n";
 
     // find execute
-    sql = "SELECT ORDER.AMOUNT, ORDER.PRICE, ORDER_TIME FROM ORDER WHERE ORDER.TRANS_ID=" + to_string(trans_id) + " AND ORDER.STATUSS=EXECUTED;";
+    sql = "SELECT ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'EXECUTED\';";
     getResult(C, sql, res);
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
         msg += "/r<canceled shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
