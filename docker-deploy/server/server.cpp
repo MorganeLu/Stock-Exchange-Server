@@ -78,8 +78,7 @@ void Server::run() {
     try {
             //Establish a connection to the database
             //Parameters: database name, user name, user password
-            // C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
-            
+          
             C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
             if (C->is_open()) {
                 cout << "Opened database successfully: " << C->dbname() << endl;
