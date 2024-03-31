@@ -147,14 +147,14 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
     int stock_id = res.at(0).at(1).as<int>();
     float amount = res.at(0).at(2).as<int>();
     int price = res.at(0).at(3).as<int>();
-    int status = res.at(0).at(4).as<int>();
+    string status = res.at(0).at(4).as<string>();
     if (account != account_id) {
         return "<error id=\"" + to_string(trans_id) + "\">Account does not have this order</error>";
     }
 
     if (amount > 0) {     // buy
         // add balance, REFUND
-        sql = "UPDATE ACCOUNT SET BALANCE=BALANCR+" + to_string(price * amount) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
+        sql = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(price * amount) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
         executeSQL(C, sql);
 
     }
@@ -164,10 +164,24 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
         executeSQL(C, sql);
     }
     // order status cancel
-    sql = "UPDATE ORDERS SET STATUSS=CANCELED AND ORDER_TIME=" +  to_string(getCurrTime())+ " WHERAE ORDERS.TRANS_ID=" + to_string(trans_id) + ";";
+    sql = "UPDATE ORDERS SET STATUSS=\'CANCELED\', ORDER_TIME=" +  to_string(getCurrTime())+ " WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + ";";
     executeSQL(C, sql);
+    
+    string msg = "<canceled id=\"" + to_string(trans_id) + "\">\n";
 
-    return "<canceled id=\"" + to_string(trans_id) + "\">xxx</canceled>";
+    sql = "SELECT ORDERS.AMOUNT, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND STATUSS=\'CANCELED\';";
+    getResult(C, sql, res);
+    for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
+        msg += "  <canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
+    }
+    sql = "SELECT ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'EXECUTED\';";
+    getResult(C, sql, res);
+    for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
+        msg += "  <executed shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
+    }
+    msg += "</canceled>\n";
+
+    return msg;
 }
 
 string executeOrder(connection* C, string symbol, int account_id, float amount, int price) {
@@ -442,9 +456,9 @@ string query(connection* C, int trans_id, int account_id) {
     sql = "SELECT ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'EXECUTED\';";
     getResult(C, sql, res);
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "  <canceled shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
+        msg += "  <executed shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
     }
-    // msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " price=" + to_string(res.at(0).at(1).as<int>()) + " time=" + to_string(res.at(0).at(2).as<string>()) + "/>\n";
+    // msg += "/r<executed shares=" + to_string(res.at(0).at(0).as<int>()) + " price=" + to_string(res.at(0).at(1).as<int>()) + " time=" + to_string(res.at(0).at(2).as<string>()) + "/>\n";
 
     msg += "</status>";
     return msg;

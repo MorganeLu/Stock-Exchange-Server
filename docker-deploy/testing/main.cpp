@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
     Client myclient(host, port);
 
     // for test 1 file
-    string filename = "./xml/test4.xml";
+    string filename = "./xml/test6.xml";
     std::ifstream file(filename);
     cout << filename << endl;
     std::stringstream buffer;
