@@ -199,7 +199,6 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     sql = "SELECT STOCK.STOCK_ID FROM STOCK WHERE STOCK.SYMBOL=\'" + to_string(symbol) + "\';";
     getResult(C, sql, res);
     int stock_id = res.at(0).at(0).as<int>();
-    // std::cout << stock_id << endl;
 
     if (amount > 0) { // buy
         // check balance and substract
