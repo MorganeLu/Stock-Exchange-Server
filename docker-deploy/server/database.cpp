@@ -201,6 +201,9 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     int stock_id = res.at(0).at(0).as<int>();
     // int original_amount = amount;
 
+    int trans_id;
+    int order_time;
+
     if (amount > 0) { // buy
         // check balance and substract
         sql = "SELECT BALANCE FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
@@ -213,7 +216,17 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         sql = "UPDATE ACCOUNT SET BALANCE=BALANCE-" + to_string(amount * price) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
         executeSQL(C, sql);
 
-        matchSellOrders(C, account_id, stock_id, symbol, amount, price);
+        // add new order
+        sql = "INSERT INTO ORDERS (ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount)
+            + "," + to_string(price) + ", \'OPEN\', " + to_string(getCurrTime()) + ") RETURNING ORDERS.TRANS_ID, ORDERS.ORDER_TIME;";
+        // executeSQL(C, sql);
+        getResult(C, sql, res);
+        for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
+            trans_id = it["TRANS_ID"].as<int>();
+            order_time = it["ORDER_TIME"].as<int>();
+        }
+
+        matchSellOrders(C, trans_id, account_id, stock_id, symbol, amount, price, order_time);
     }
     else {  // sell
         // 是否需要将amount转为正数?
@@ -241,19 +254,19 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
                 " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(account_id) + ";";
             executeSQL(C, sql);
         }
-
-        matchBuyOrders(C, account_id, stock_id, symbol, amount, price);
+        // add new order
+        sql = "INSERT INTO ORDERS (ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount)
+            + "," + to_string(price) + ", \'OPEN\', " + to_string(getCurrTime()) + ") RETURNING ORDERS.TRANS_ID, ORDERS.ORDER_TIME;";
+        // executeSQL(C, sql);
+        getResult(C, sql, res);
+        for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
+            trans_id = it["TRANS_ID"].as<int>();
+            order_time = it["ORDER_TIME"].as<int>();
+        }
+        matchBuyOrders(C, trans_id, account_id, stock_id, symbol, amount, price, order_time);
     }
 
-    // add new order
-    sql = "INSERT INTO ORDERS (ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(account_id) + "," + to_string(stock_id) + "," + to_string(amount)
-        + "," + to_string(price) + ", \'OPEN\', " + to_string(getCurrTime()) + ") RETURNING ORDERS.TRANS_ID;";
-    // executeSQL(C, sql);
-    getResult(C, sql, res);
-    int trans_id = 0;
-    for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        trans_id = it["TRANS_ID"].as<int>();
-    }
+
 
     // check whether overlap and need execute
     // TBD
@@ -269,7 +282,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         to_string(price) + "\" id=\"" + to_string(trans_id) + "\"/>\n";
 }
 
-void matchBuyOrders(connection* C, int sellerId, int stock_id, string symbol, float amount, int price) {
+void matchBuyOrders(connection* C, int seller_trans_id, int sellerId, int stock_id, string symbol, float amount, int price, int order_time) {
     result res;
     // work W(*C);
     // find all matched buy orders
@@ -284,12 +297,29 @@ void matchBuyOrders(connection* C, int sellerId, int stock_id, string symbol, fl
 
     if (!res.empty()) {
         for (auto order : res) {
+            int matchingTransId = order["TRANS_ID"].as<int>();
             int matchingAccountId = order["ACCOUNT_ID"].as<int>();
             float matchingAmount = order["AMOUNT"].as<float>();
             int matchingPrice = order["PRICE"].as<int>();
+            int matchingTime = order["ORDER_TIME"].as<int>();
 
             int executionPrice = order["ORDER_TIME"].as<int>() <= getCurrTime() ? matchingPrice : price;
             float executionAmount = min(abs(amount), abs(matchingAmount));
+
+            // seller split
+            if (executionAmount == abs(matchingAmount)) {
+                float splitAmount = executionAmount - abs(amount);
+                string sql = "INSERT INTO ORDERS (TRANS_ID, ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(seller_trans_id) + "," + to_string(sellerId) + "," + to_string(stock_id) + "," + to_string(splitAmount)
+                    + "," + to_string(price) + ", \'OPEN\', " + to_string(order_time) + ");";
+                executeSQL(C, sql);
+            }
+            // buyer split
+            else {
+                float splitAmount = abs(matchingAmount) - executionAmount;
+                string sql = "INSERT INTO ORDERS (TRANS_ID, ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(matchingTransId) + "," + to_string(matchingAccountId) + "," + to_string(stock_id) + "," + to_string(splitAmount)
+                    + "," + to_string(matchingPrice) + ", \'OPEN\', " + to_string(matchingTime) + ");";
+                executeSQL(C, sql);
+            }
 
             string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(matchingAmount * matchingPrice) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
             executeSQL(C, refundBuyerBalance);
@@ -300,7 +330,8 @@ void matchBuyOrders(connection* C, int sellerId, int stock_id, string symbol, fl
 
             updateBalancesAndPositions(C, matchingAccountId, sellerId, symbol, executionAmount, executionPrice);
 
-            markOrdersAsExecuted(C, order["TRANS_ID"].as<int>(), sellerId, executionAmount, executionPrice);
+            markOrdersAsExecuted(C, seller_trans_id, sellerId, executionAmount, executionPrice);
+            markOrdersAsExecuted(C, order["TRANS_ID"].as<int>(), matchingAccountId, executionAmount, executionPrice);
 
             amount -= executionAmount;
             if (amount == 0) {
@@ -308,21 +339,22 @@ void matchBuyOrders(connection* C, int sellerId, int stock_id, string symbol, fl
                 executeSQL(C, deletesql);
                 // W.exec(deletesql);
                 // W.commit();
-                break;
+                // break;
+                continue;
             }
         }
     }
-    if (amount != 0) {
-        string sql = "INSERT INTO ORDERS VALUES (ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) (" + to_string(sellerId) + "," + to_string(stock_id) + "," + to_string(amount)
-            + "," + to_string(price) + ", OPEN, " + to_string(getCurrTime()) + ");";
-        executeSQL(C, sql);
-    }
+    // if (amount != 0) {
+    //     string sql = "INSERT INTO ORDERS VALUES (ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) (" + to_string(sellerId) + "," + to_string(stock_id) + "," + to_string(amount)
+    //         + "," + to_string(price) + ", OPEN, " + to_string(getCurrTime()) + ");";
+    //     executeSQL(C, sql);
+    // }
     // W.commit();
 
 }
 
 
-void matchSellOrders(connection* C, int buyerId, int stock_id, string symbol, float amount, int price) {
+void matchSellOrders(connection* C, int buyer_trans_id, int buyerId, int stock_id, string symbol, float amount, int price, int order_time) {
     result res;
     // work W(*C);
     // find all matched sell orders
@@ -337,12 +369,29 @@ void matchSellOrders(connection* C, int buyerId, int stock_id, string symbol, fl
 
     if (!res.empty()) {
         for (auto order : res) {
+            int matchingTransId = order["TRANS_ID"].as<int>();
             int matchingAccountId = order["ACCOUNT_ID"].as<int>();
             float matchingAmount = order["AMOUNT"].as<float>();
             int matchingPrice = order["PRICE"].as<int>();
+            int matchingTime = order["ORDER_TIME"].as<int>();
 
             int executionPrice = order["ORDER_TIME"].as<int>() <= getCurrTime() ? matchingPrice : price;
             float executionAmount = min(abs(amount), abs(matchingAmount));
+
+            // buyer split
+            if (executionAmount == abs(matchingAmount)) {
+                float splitAmount = abs(amount) - executionAmount;
+                string sql = "INSERT INTO ORDERS (TRANS_ID, ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(buyer_trans_id) + "," + to_string(buyerId) + "," + to_string(stock_id) + "," + to_string(splitAmount)
+                    + "," + to_string(price) + ", \'OPEN\', " + to_string(order_time) + ");";
+                executeSQL(C, sql);
+            }
+            // seller split
+            else {
+                float splitAmount = executionAmount - abs(matchingAmount);
+                string sql = "INSERT INTO ORDERS (TRANS_ID, ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(matchingTransId) + "," + to_string(matchingAccountId) + "," + to_string(stock_id) + "," + to_string(splitAmount)
+                    + "," + to_string(matchingPrice) + ", \'OPEN\', " + to_string(matchingTime) + ");";
+                executeSQL(C, sql);
+            }
 
             string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(amount * price) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(buyerId) + ";";
             executeSQL(C, refundBuyerBalance);
@@ -353,7 +402,8 @@ void matchSellOrders(connection* C, int buyerId, int stock_id, string symbol, fl
 
             updateBalancesAndPositions(C, buyerId, matchingAccountId, symbol, executionAmount, executionPrice);
 
-            markOrdersAsExecuted(C, order["TRANS_ID"].as<int>(), buyerId, executionAmount, executionPrice);
+            markOrdersAsExecuted(C, buyer_trans_id, buyerId, executionAmount, executionPrice);
+            markOrdersAsExecuted(C, order["TRANS_ID"].as<int>(), matchingAccountId, executionAmount, executionPrice);
 
             amount += executionAmount;
 
@@ -368,15 +418,16 @@ void matchSellOrders(connection* C, int buyerId, int stock_id, string symbol, fl
                 executeSQL(C, deletesql);
                 // W.exec(deletesql);
                 // W.commit();
-                break;
+                // break;
+                continue;
             }
         }
     }
-    if (amount != 0) {
-        string sql = "INSERT INTO ORDERS (ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(buyerId) + "," + to_string(stock_id) + "," + to_string(amount)
-            + "," + to_string(price) + ", \'OPEN\', " + to_string(getCurrTime()) + ");";
-        executeSQL(C, sql);
-    }
+    // if (amount != 0) {
+    //     string sql = "INSERT INTO ORDERS (ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(buyerId) + "," + to_string(stock_id) + "," + to_string(amount)
+    //         + "," + to_string(price) + ", \'OPEN\', " + to_string(getCurrTime()) + ");";
+    //     executeSQL(C, sql);
+    // }
     // W.commit();
 
 }
@@ -411,20 +462,25 @@ void updateBalancesAndPositions(connection* C, int buyerId, int sellerId, string
     executeSQL(C, updateBuyerPosition);
 
     // update seller's position(amount<0, so still add)
-    string updateSellerPosition = "UPDATE POSITION SET AMOUNT = AMOUNT + " + to_string(amount) +
+    string updateSellerPosition = "UPDATE POSITION SET AMOUNT = AMOUNT - " + to_string(amount) +
         " WHERE ACCOUNT_ID = " + to_string(sellerId) +
         " AND STOCK_ID = (SELECT STOCK_ID FROM STOCK WHERE SYMBOL = '" + symbol + "');";
     // W.exec(updateSellerPosition);
     executeSQL(C, updateSellerPosition);
+    std::cout << "line 431: amount: " << amount << " account_id : " << sellerId << " symbol:" << symbol << std::endl;
 }
 
 void markOrdersAsExecuted(connection* C, int orderId, int accountId, float amount, int price) {
-    string markOrderExecuted = "UPDATE ORDERS SET STATUSS = 'EXECUTED', AMOUNT = AMOUNT - " + to_string(amount) +
+    string markOrderExecuted = "UPDATE ORDERS SET STATUSS = 'EXECUTED', AMOUNT = " + to_string(amount) +
         ", PRICE = " + to_string(price) +
-        " WHERE TRANS_ID = " + to_string(orderId) +
-        " AND ACCOUNT_ID = " + to_string(accountId) + ";";
+        " WHERE ORDERS.TRANS_ID = " + to_string(orderId) +
+        " AND ORDERS.ACCOUNT_ID = " + to_string(accountId) + ";";
+    // std::cout << "line 426: orderId: " << orderId << " accountId: " << accountId << " amount: " << amount << " price: " << price << std::endl;
+
     // W.exec(markOrderExecuted);
     executeSQL(C, markOrderExecuted);
+    std::cout << "line 426: transId: " << orderId << " accountId: " << accountId << " amount: " << amount << " price: " << price << std::endl;
+
 }
 
 

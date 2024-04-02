@@ -27,8 +27,8 @@ string cancelOrder(connection* C, int account_id, int trans_id);
 string executeOrder(connection* C, string symbol, int account_id, float amount, int price);
 void updateBalancesAndPositions(connection* C, int buyerId, int sellerId, string symbol, float amount, int price);
 void markOrdersAsExecuted(connection* C, int orderId, int accountId, float amount, int price);
-void matchSellOrders(connection* C, int buyerId, int stock_id, string symbol, float amount, int price);
-void matchBuyOrders(connection* C, int sellerId, int stock_id, string symbol, float amount, int price);
+void matchSellOrders(connection* C, int buyer_trans_id, int buyerId, int stock_id, string symbol, float amount, int price, int order_time);
+void matchBuyOrders(connection* C, int seller_trans_id, int sellerId, int stock_id, string symbol, float amount, int price, int order_time);
 
 string query(connection* C, int trans_id, int account_id);
 
