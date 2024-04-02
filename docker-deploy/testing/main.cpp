@@ -27,18 +27,19 @@ std::vector<std::string> GetFilesInDirectory(const std::string& folderPath) {
             }
         }
         closedir(directory);
-    } else {
+    }
+    else {
         std::cerr << "Error opening directory " << folderPath << std::endl;
     }
     return files;
 }
 
 
-int testAll(Client& myclient){
-    std::string folder_path = "./xml"; 
+int testAll(Client& myclient) {
+    std::string folder_path = "./xml";
     std::vector<std::string> files = GetFilesInDirectory(folder_path);
-    for(string filename: files){
-        string file_path = folder_path+"/"+filename;
+    for (string filename : files) {
+        string file_path = folder_path + "/" + filename;
         cout << file_path << endl;
         std::ifstream file(file_path);
         std::stringstream buffer;
@@ -59,7 +60,7 @@ int main(int argc, char* argv[]) {
     Client myclient(host, port);
 
     // for test 1 file
-    string filename = "./xml/test5.xml";
+    string filename = "./xml/test7.xml";
     std::ifstream file(filename);
     cout << filename << endl;
     std::stringstream buffer;
