@@ -92,10 +92,10 @@ void Server::run() {
             cerr << e.what() << std::endl;
             return;
         }
-        // createTable("sql/account.sql", C);
-        // createTable("sql/stock.sql", C);
-        // createTable("sql/position.sql", C);
-        // createTable("sql/order.sql", C);
+        createTable("sql/account.sql", C);
+        createTable("sql/stock.sql", C);
+        createTable("sql/position.sql", C);
+        createTable("sql/order.sql", C);
 
     // while (true) {
     //     int client_fd = connect2Client();

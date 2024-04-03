@@ -1,9 +1,0 @@
-236
-<?xml version="1.0" encoding="UTF-8"?>
-<transactions id="xinyi">
-    <order sym="stock1" amount="2" limit="10"/>
-    <query id="1"/>
-    <query id="0"/>
-    <order sym="stock2" amount="1" limit="4"/>
-    <cancel id="1"/>
-</transactions>

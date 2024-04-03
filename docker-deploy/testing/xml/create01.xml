@@ -1,8 +1,12 @@
-160
+264
 <?xml version="1.0" encoding="UTF-8"?>
 <create>
   <account id="1" balance="100"/>
+  <account id="2" balance="100"/>
   <symbol sym="stock1">
     <account id="1">10</account>
+  </symbol>
+  <symbol sym="stock2">
+    <account id="2">10</account>
   </symbol>
 </create>

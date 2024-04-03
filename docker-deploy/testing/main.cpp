@@ -60,7 +60,8 @@ int main(int argc, char* argv[]) {
     Client myclient(host, port);
 
     // for test 1 file
-    string filename = "./xml/test7.xml";
+    // string filename = "./xml/test01.xml";
+    string filename = argv[1];
     std::ifstream file(filename);
     cout << filename << endl;
     std::stringstream buffer;
