@@ -88,14 +88,17 @@ void Server::run() {
                 return;
             }
         }
-        catch (const std::exception& e) {
-            cerr << e.what() << std::endl;
-            return;
-        }
-        createTable("sql/account.sql", C);
-        createTable("sql/stock.sql", C);
-        createTable("sql/position.sql", C);
-        createTable("sql/order.sql", C);
+    catch (const std::exception& e) {
+        cerr << e.what() << std::endl;
+        return;
+    }
+    createTable("sql/account.sql", C);
+    createTable("sql/stock.sql", C);
+    createTable("sql/position.sql", C);
+    createTable("sql/order.sql", C);
+
+    C->disconnect();
+    cout << "Disconnect Database"<<endl;
 
     // while (true) {
     //     int client_fd = connect2Client();
@@ -116,17 +119,39 @@ void Server::run() {
     // 创建一个线程池来处理客户端连接
     const int THREAD_POOL_SIZE = 5;
     std::vector<std::thread> threads;
+    
     for (int i = 0; i < THREAD_POOL_SIZE; ++i) {
-        threads.emplace_back([this, C]() {
+        threads.emplace_back([this]() {
             while (true) {
+                connection* thread_C;
+                try {
+                    //Establish a connection to the database
+                    //Parameters: database name, user name, user password
+                
+                    thread_C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
+                    if (thread_C->is_open()) {
+                        cout << "Opened database successfully: " << thread_C->dbname() << endl;
+                    }
+                    else {
+                        cout << "Can't open database" << endl;
+                        return;
+                    }
+                }
+                catch (const std::exception& e) {
+                    cerr << e.what() << std::endl;
+                    return;
+                }
                 int client_fd = connect2Client();
                 XMLHandler xmlhandler;
                 std::string request = xmlhandler.receiveRequest(client_fd);
-                string response = xmlhandler.handleXML(C, request);
+                string response = xmlhandler.handleXML(thread_C, request);
                 cout << response << endl;
                 const char* response_xml = response.c_str();
                 send(client_fd, response_xml, strlen(response_xml), 0);
                 close(client_fd);
+
+                thread_C->disconnect();
+                delete thread_C;
             }
         });
     }
@@ -136,5 +161,5 @@ void Server::run() {
         thread.join();
     }
 
-    C->disconnect();
+    // C->disconnect();
 }
