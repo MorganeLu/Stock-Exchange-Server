@@ -310,7 +310,7 @@ void matchBuyOrders(connection* C, int seller_trans_id, int sellerId, int stock_
             float executionAmount = min(abs(amount), abs(matchingAmount));
 
             float splitAmount;
-            int type;
+            int type = 65535;
             // seller split
             if ((abs(amount) != abs(matchingAmount)) && (executionAmount == abs(matchingAmount))) {
                 // float splitAmount = executionAmount - abs(amount);
@@ -318,6 +318,7 @@ void matchBuyOrders(connection* C, int seller_trans_id, int sellerId, int stock_
                 //     + "," + to_string(price) + ", \'OPEN\', " + to_string(order_time) + ");";
                 // executeSQL(C, sql);
                 splitAmount = executionAmount - abs(amount);
+                std::cout << "line 321: amount:" << amount << " matchingAmount: " << matchingAmount << " executionAmount: " << executionAmount << " splitAmount: " << splitAmount << std::endl;
                 type = 1;
                 std::cout << "line 315: seller_trans_id: " << seller_trans_id << " seller_id: " << sellerId << " stock_id: " << stock_id << " splitAmount: " << splitAmount << " price: " << price << " order_time: " << order_time << std::endl;
             }
@@ -328,6 +329,7 @@ void matchBuyOrders(connection* C, int seller_trans_id, int sellerId, int stock_
                 //     + "," + to_string(matchingPrice) + ", \'OPEN\', " + to_string(matchingTime) + ");";
                 // executeSQL(C, sql);
                 splitAmount = abs(matchingAmount) - executionAmount;
+                std::cout << "line 332: amount:" << amount << " matchingAmount: " << matchingAmount << " executionAmount: " << executionAmount << " splitAmount: " << splitAmount << std::endl;
                 type = 0;
                 std::cout << "line 323: buyer_trans_id: " << matchingTransId << " buyer_id: " << matchingAccountId << " stock_id: " << stock_id << " splitAmount: " << splitAmount << " price: " << matchingPrice << " order_time: " << matchingTime << std::endl;
             }
@@ -362,15 +364,30 @@ void matchBuyOrders(connection* C, int seller_trans_id, int sellerId, int stock_
                 std::cout << "line 357: buyer_trans_id: " << matchingTransId << " buyer_id: " << matchingAccountId << " stock_id: " << stock_id << " splitAmount: " << splitAmount << " price: " << matchingPrice << " order_time: " << matchingTime << std::endl;
             }
 
-            amount -= executionAmount;
-            if (amount == 0) {
-                string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
-                executeSQL(C, deletesql);
-                // W.exec(deletesql);
-                // W.commit();
-                // break;
+            amount += executionAmount;
+
+            string getSellerAmount = "SELECT POSITION.AMOUNT FROM POSITION WHERE POSITION.STOCK_ID="
+                + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
+            result sellerOrder;
+            getResult(C, getSellerAmount, sellerOrder);
+            if (sellerOrder.size() == 0) {
                 continue;
             }
+            float sellerAmount = sellerOrder.at(0).at(0).as<float>();
+            if (sellerAmount == 0) {
+                string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
+                executeSQL(C, deletesql);
+                continue;
+            }
+
+            // if (amount == 0) {
+            //     string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
+            //     executeSQL(C, deletesql);
+            //     // W.exec(deletesql);
+            //     // W.commit();
+            //     // break;
+            //     continue;
+            // }
         }
     }
     // if (amount != 0) {
@@ -417,6 +434,7 @@ void matchSellOrders(connection* C, int buyer_trans_id, int buyerId, int stock_i
                 //     + "," + to_string(price) + ", \'OPEN\', " + to_string(order_time) + ");";
                 // executeSQL(C, sql);
                 splitAmount = abs(amount) - executionAmount;
+                std::cout << "line 422: amount:" << amount << " matchingAmount: " << matchingAmount << " executionAmount: " << executionAmount << " splitAmount: " << splitAmount << std::endl;
                 type = 1;
                 std::cout << "line 390: buyer_trans_id: " << buyer_trans_id << " buyer_id: " << buyerId << " stock_id: " << stock_id << " splitAmount: " << splitAmount << " price: " << price << " order_time: " << order_time << std::endl;
             }
@@ -427,6 +445,7 @@ void matchSellOrders(connection* C, int buyer_trans_id, int buyerId, int stock_i
                 //     + "," + to_string(matchingPrice) + ", \'OPEN\', " + to_string(matchingTime) + ");";
                 // executeSQL(C, sql);
                 splitAmount = executionAmount - abs(matchingAmount);
+                std::cout << "line 433: amount:" << amount << " matchingAmount: " << matchingAmount << " executionAmount: " << executionAmount << " splitAmount: " << splitAmount << std::endl;
                 type = 0;
                 std::cout << "line 398: seller_trans_id: " << matchingTransId << " buyer_id: " << matchingAccountId << " stock_id: " << stock_id << " splitAmount: " << splitAmount << " price: " << matchingPrice << " order_time: " << matchingTime << std::endl;
             }
