@@ -42,50 +42,63 @@ void deleteTable(connection* C, string tableName) {
 }
 
 string  addAccount(connection* C, int account_id, float balance) {
+    work W(*C);
     if (balance <= 0) {  //TBD: CAN?
-        return "<error id=\"" + to_string(account_id) + "\">Non-positive blance is not allowed</error>\n";
+        W.commit();
+        return "  <error id=\"" + to_string(account_id) + "\">Non-positive blance is not allowed</error>\n";
     }
 
     // Check account existance
     string sql;
     sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT_ID =" + to_string(account_id) + ";";
     result res;
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     if (res.size() != 0) {
-        return "<error id=\"" + to_string(account_id) + "\">Account already exists</error>\n";
+        W.commit();
+        return "  <error id=\"" + to_string(account_id) + "\">Account already exists</error>\n";
     }
 
     sql = "INSERT INTO ACCOUNT (ACCOUNT_ID, BALANCE) VALUES (" + to_string(account_id) + "," + to_string(balance) + ");";
-    executeSQL(C, sql);
-    return "<created id=\"" + to_string(account_id) + "\"/>\n";
+    // executeSQL(C, sql);
+    W.exec(sql);
+    W.commit();
+    return "  <created id=\"" + to_string(account_id) + "\"/>\n";
 }
 
 string addPosition(connection* C, string symbol, int account_id, float amount) {
+    work W(*C);
     if (amount <= 0) {
-        return "<error id=\"" + to_string(account_id) + "\">Non-positive amount is not allowed</error>\n";
+        W.commit();
+        return "  <error id=\"" + to_string(account_id) + "\">Non-positive amount is not allowed</error>\n";
     }
 
     string sql;
     // check account
     sql = "SELECT ACCOUNT.ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID =" + to_string(account_id) + ";";
     result res;
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     if (res.size() == 0) {
-        return "<error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
+        W.commit();
+        return "  <error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
     }
 
     // check stock existance
     sql = "SELECT STOCK.STOCK_ID FROM STOCK WHERE SYMBOL=\'" + symbol + "\';";
     // result res;
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     if (res.size() == 0) {
         sql = "INSERT INTO STOCK (SYMBOL) VALUES (\'" + symbol + "\');";
-        executeSQL(C, sql);
+        // executeSQL(C, sql);
+        W.exec(sql);
     }
 
     sql = "SELECT STOCK_ID FROM STOCK WHERE SYMBOL =\'" + symbol + "\';";
 
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     int stock_id = res.at(0).at(0).as<int>();
 
 
@@ -105,43 +118,24 @@ string addPosition(connection* C, string symbol, int account_id, float amount) {
     sql = "INSERT INTO POSITION (STOCK_ID, ACCOUNT_ID, AMOUNT) VALUES (" +
         to_string(stock_id) + "," + to_string(account_id) + "," + to_string(amount) +
         ")ON CONFLICT (STOCK_ID, ACCOUNT_ID) DO UPDATE SET AMOUNT = POSITION.AMOUNT + " + to_string(amount) + ";";
-    executeSQL(C, sql);
-    return "<created sym=\"" + to_string(symbol) + "\" id=\"" + to_string(account_id) + "\"/>\n";
-}
-
-string openOrder(connection* C, string symbol, int account_id, int trans_id, float amount, int price) {
-    // check account
-    string sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT_ID =" + to_string(account_id) + ";";
-    result res;
-    getResult(C, sql, res);
-    if (res.size() == 0) {
-        return "<error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
-    }
-
-    // check if have this stock and amount
-    sql = "SELECT STOCK_ID FROM STOCK WHERE SYMBOL =" + to_string(symbol) + ";";
-    getResult(C, sql, res);
-    if (res.size() == 0) {
-        return "<error id=\"" + to_string(account_id) + "\">Symbol not exists</error>\n";
-    }
-    sql = "SELECT COUNT(*) FROM STOCK WHERE SYMBOL =" + to_string(symbol) + ";";
-    getResult(C, sql, res);
-    int stock_id = res.at(0).at(0).as<int>();
-
-    // not enough balance
-
-    return "";
+    // executeSQL(C, sql);
+    W.exec(sql);
+    W.commit();
+    return "  <created sym=\"" + to_string(symbol) + "\" id=\"" + to_string(account_id) + "\"/>\n";
 }
 
 string cancelOrder(connection* C, int account_id, int trans_id) {
+    work W(*C);
     // find trans order
     string sql;
     sql = "SELECT ORDERS.ACCOUNT_ID, ORDERS.STOCK_ID, ORDERS.AMOUNT, ORDERS.PRICE, STATUSS"
         " FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'OPEN\';";
     result res;
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     if (res.size() != 1) {
-        return "<error id=\"" + to_string(trans_id) + "\">Order does not exist</error>";
+        W.commit();
+        return "  <error id=\"" + to_string(trans_id) + "\">Order does not exist</error>";
     }
     int account = res.at(0).at(0).as<int>();
     int stock_id = res.at(0).at(1).as<int>();
@@ -149,39 +143,44 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
     int price = res.at(0).at(3).as<int>();
     string status = res.at(0).at(4).as<string>();
     if (account != account_id) {
-        return "<error id=\"" + to_string(trans_id) + "\">Account does not have this order</error>";
+        W.commit();
+        return "  <error id=\"" + to_string(trans_id) + "\">Account does not have this order</error>";
     }
 
     if (amount > 0) {     // buy
         // add balance, REFUND
         sql = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(price * amount) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
-        executeSQL(C, sql);
-
+        // executeSQL(C, sql);
+        W.exec(sql);
     }
     else {      // sell
         // add position
         sql = "INSERT INTO POSITION (STOCK_ID, ACCOUNT_ID, AMOUNT) VALUES (" + to_string(stock_id) + ", " + to_string(account_id) + ", " + to_string(abs(amount)) + ") "
             + "ON CONFLICT (STOCK_ID, ACCOUNT_ID) DO UPDATE SET AMOUNT = POSITION.AMOUNT+" + to_string(abs(amount)) + ";";
-        executeSQL(C, sql);
+        // executeSQL(C, sql);
+        W.exec(sql);
     }
     // order status cancel
     sql = "UPDATE ORDERS SET STATUSS=\'CANCELED\', ORDER_TIME=" + to_string(getCurrTime()) + " WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND STATUSS='OPEN';";
-    executeSQL(C, sql);
+    // executeSQL(C, sql);
+    W.exec(sql);
 
-    string msg = "<canceled id=\"" + to_string(trans_id) + "\">\n";
+    string msg = "  <canceled id=\"" + to_string(trans_id) + "\">\n";
 
     sql = "SELECT ORDERS.AMOUNT, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND STATUSS=\'CANCELED\';";
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "  <canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
+        msg += "    <canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
     }
     sql = "SELECT ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'EXECUTED\';";
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "  <executed shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
+        msg += "    <executed shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
     }
-    msg += "</canceled>\n";
-
+    msg += "  </canceled>\n";
+    W.commit();
     return msg;
 }
 
@@ -194,11 +193,11 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     res = result(W.exec(sql));
     if (res.size() == 0) {
         W.commit();
-        return "<error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
+        return "  <error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
     }
     if (amount == 0) {
         W.commit();
-        return "<error id=\"" + to_string(account_id) + "\">Ammount cannot be 0</error>\n";
+        return "  <error id=\"" + to_string(account_id) + "\">Ammount cannot be 0</error>\n";
     }
 
     sql = "SELECT STOCK.STOCK_ID FROM STOCK WHERE STOCK.SYMBOL=\'" + to_string(symbol) + "\';";
@@ -206,7 +205,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     res = result(W.exec(sql));
     if (res.size() == 0) {
         W.commit();
-        return "<error id=\"" + to_string(account_id) + "\">Stock does not exist</error>\n";
+        return "  <error id=\"" + to_string(account_id) + "\">Stock does not exist</error>\n";
     }
     int stock_id = res.at(0).at(0).as<int>();
     // int original_amount = amount;
@@ -222,7 +221,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         int balance = res.at(0).at(0).as<int>();
         if (balance < amount * price) {
             W.commit();
-            return "<error sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) +
+            return "  <error sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) +
                 "\" limit=\"" + to_string(price) + "\">Balance is not enough</error>\n";
         }
         sql = "UPDATE ACCOUNT SET BALANCE=BALANCE-" + to_string(amount * price) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
@@ -252,13 +251,13 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         res = result(W.exec(sql));
         if (res.size() == 0) {
             W.commit();
-            return "<error id=\"" + to_string(account_id) + "\">Account does not have this stock</error>\n";
+            return "  <error id=\"" + to_string(account_id) + "\">Account does not have this stock</error>\n";
         }
         int original_amount = res.at(0).at(0).as<int>();
         stock_id = res.at(0).at(1).as<int>();
         if (original_amount < abs_amount) {
             W.commit();
-            return "<error id=\"" + to_string(account_id) + "\">Amount is not enough</error>\n";
+            return "  <error id=\"" + to_string(account_id) + "\">Amount is not enough</error>\n";
         }
         else if (original_amount == abs_amount) {
             // delete data from position
@@ -287,7 +286,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     }
 
     W.commit();
-    return "<opened sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) + "\" limit=\"" +
+    return "  <opened sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) + "\" limit=\"" +
         to_string(price) + "\" id=\"" + to_string(trans_id) + "\"/>\n";
 }
 
@@ -589,51 +588,60 @@ void markOrdersAsExecuted(connection* C, work& W, int orderId, int accountId, fl
 
 
 string query(connection* C, int trans_id, int account_id) {
-    string msg = "<status id=" + to_string(trans_id) + ">\n";
+    work W(*C);
+    string msg = "  <status id=" + to_string(trans_id) + ">\n";
     // check account
     string sql;
     sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
     result res;
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     if (res.size() == 0) {
-        return "<error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
+        W.commit();
+        return "    <error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
     }
 
     // check trans_id
     sql = "SELECT ORDERS.STOCK_ID, ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE "
         "ORDERS.TRANS_ID=" + to_string(trans_id) + ";";
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     if (res.size() == 0) {
-        return "<error id=\"" + to_string(trans_id) + "\">Order not exists</error>";
+        W.commit();
+        return "    <error id=\"" + to_string(trans_id) + "\">Order not exists</error>";
         // TBD order not exist
     }
 
     // order可能split了，查询结果可能有多个
     // find open
     sql = "SELECT ORDERS.AMOUNT FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'OPEN\';";
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "  <open shares=" + to_string(it[0].as<int>()) + "/>\n";
+        msg += "    <open shares=" + to_string(it[0].as<int>()) + "/>\n";
     }
     // msg += "/r<open shares=" + to_string(res.at(0).at(0).as<int>()) + "/>\n";
 
     // find cancel
     sql = "SELECT ORDERS.AMOUNT, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'CANCELED\';";
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "  <canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
+        msg += "    <canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
     }
     // msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " time=" + to_string(res.at(0).at(1).as<string>()) + "/>\n";
 
     // find execute
     sql = "SELECT ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'EXECUTED\';";
-    getResult(C, sql, res);
+    // getResult(C, sql, res);
+    res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "  <executed shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
+        msg += "    <executed shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
     }
     // msg += "/r<executed shares=" + to_string(res.at(0).at(0).as<int>()) + " price=" + to_string(res.at(0).at(1).as<int>()) + " time=" + to_string(res.at(0).at(2).as<string>()) + "/>\n";
 
-    msg += "</status>\n";
+    msg += "  </status>\n";
+    W.commit();
     return msg;
 }
 
