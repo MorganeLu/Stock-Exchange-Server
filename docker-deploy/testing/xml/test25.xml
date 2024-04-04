@@ -1,5 +1,5 @@
-127
+128
 <?xml version="1.0" encoding="UTF-8"?>
 <transactions id="2">  
-  <order sym="stock2" amount="100" limit="10"/> 
+  <order sym="stock2" amount="-100" limit="10"/> 
 </transactions>

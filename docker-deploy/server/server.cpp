@@ -76,18 +76,18 @@ void Server::run() {
 
     connection* C;
     try {
-            //Establish a connection to the database
-            //Parameters: database name, user name, user password
-          
-            C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
-            if (C->is_open()) {
-                cout << "Opened database successfully: " << C->dbname() << endl;
-            }
-            else {
-                cout << "Can't open database" << endl;
-                return;
-            }
+        //Establish a connection to the database
+        //Parameters: database name, user name, user password
+
+        C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
+        if (C->is_open()) {
+            cout << "Opened database successfully: " << C->dbname() << endl;
         }
+        else {
+            cout << "Can't open database" << endl;
+            return;
+        }
+    }
     catch (const std::exception& e) {
         cerr << e.what() << std::endl;
         return;
@@ -98,14 +98,14 @@ void Server::run() {
     createTable("sql/order.sql", C);
 
     C->disconnect();
-    cout << "Disconnect Database"<<endl;
+    cout << "Disconnect Database" << endl;
 
     // while (true) {
     //     int client_fd = connect2Client();
     //     // parse XML
     //     XMLHandler xmlhandler;
     //     std::string request = xmlhandler.receiveRequest(client_fd);
-        
+
     //     string response = xmlhandler.handleXML(C, request);
     //     cout << response << endl;
 
@@ -117,9 +117,9 @@ void Server::run() {
     // }
 
     // 创建一个线程池来处理客户端连接
-    const int THREAD_POOL_SIZE = 5;
+    const int THREAD_POOL_SIZE = 1;
     std::vector<std::thread> threads;
-    
+
     for (int i = 0; i < THREAD_POOL_SIZE; ++i) {
         threads.emplace_back([this]() {
             while (true) {
@@ -127,7 +127,7 @@ void Server::run() {
                 try {
                     //Establish a connection to the database
                     //Parameters: database name, user name, user password
-                
+
                     thread_C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
                     if (thread_C->is_open()) {
                         cout << "Opened database successfully: " << thread_C->dbname() << endl;
@@ -153,7 +153,7 @@ void Server::run() {
                 thread_C->disconnect();
                 delete thread_C;
             }
-        });
+            });
     }
 
     // 等待所有线程完成
