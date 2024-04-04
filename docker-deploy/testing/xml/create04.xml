@@ -1,0 +1,9 @@
+226
+<?xml version="1.0" encoding="UTF-8"?>
+<create>
+  <account id="1" balance="100"/>
+  <account id="2" balance="100"/>
+  <account id="1" balance="200"/>
+  <account id="3" balance="0"/>
+  <account id="3" balance="-10"/>
+</create>

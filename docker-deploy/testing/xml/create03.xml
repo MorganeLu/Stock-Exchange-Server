@@ -1,10 +1,11 @@
-194
 <?xml version="1.0" encoding="UTF-8"?>
 <create>
-  <symbol sym="stock3">
-    <account id="3">20</account>
+  <account id="1" balance="1000"/>
+  <account id="2" balance="1000"/>
+  <symbol sym="stock1">
+    <account id="1">20</account>
   </symbol>
   <symbol sym="stock2">
-    <account id="2">5</account>
+    <account id="2">20</account>
   </symbol>
 </create>
