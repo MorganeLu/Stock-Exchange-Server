@@ -226,7 +226,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
             trans_id = it["TRANS_ID"].as<int>();
             order_time = it["ORDER_TIME"].as<int>();
         }
-
+        std::cout << "line 229: new order time: " << order_time << std::endl;
         matchSellOrders(C, trans_id, account_id, stock_id, symbol, amount, price, order_time);
     }
     else {  // sell
@@ -264,6 +264,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
             trans_id = it["TRANS_ID"].as<int>();
             order_time = it["ORDER_TIME"].as<int>();
         }
+        std::cout << "line 267: new order time: " << order_time << std::endl;
         matchBuyOrders(C, trans_id, account_id, stock_id, symbol, amount, price, order_time);
     }
 
@@ -284,6 +285,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
 }
 
 void matchBuyOrders(connection* C, int seller_trans_id, int sellerId, int stock_id, string symbol, float amount, int price, int order_time) {
+    std::cout << "line 288: order_time in matchBuyOrders: " << order_time << std::endl;
     result res;
     // work W(*C);
     // find all matched buy orders
@@ -342,8 +344,9 @@ void matchBuyOrders(connection* C, int seller_trans_id, int sellerId, int stock_
 
             updateBalancesAndPositions(C, matchingAccountId, sellerId, symbol, executionAmount, executionPrice);
 
-            markOrdersAsExecuted(C, seller_trans_id, sellerId, -executionAmount, executionPrice);
-            markOrdersAsExecuted(C, order["TRANS_ID"].as<int>(), matchingAccountId, executionAmount, executionPrice);
+            int executed_time = getCurrTime();
+            markOrdersAsExecuted(C, seller_trans_id, sellerId, -executionAmount, executionPrice, executed_time);
+            markOrdersAsExecuted(C, order["TRANS_ID"].as<int>(), matchingAccountId, executionAmount, executionPrice, executed_time);
 
             if (type == 1) {
                 string sql = "INSERT INTO ORDERS (TRANS_ID, ACCOUNT_ID, STOCK_ID, AMOUNT, PRICE, STATUSS, ORDER_TIME) VALUES (" + to_string(seller_trans_id) + "," + to_string(sellerId) + "," + to_string(stock_id) + "," + to_string(splitAmount)
@@ -381,6 +384,7 @@ void matchBuyOrders(connection* C, int seller_trans_id, int sellerId, int stock_
 
 
 void matchSellOrders(connection* C, int buyer_trans_id, int buyerId, int stock_id, string symbol, float amount, int price, int order_time) {
+    std::cout << "line 387: order_time in matchSellOrders: " << order_time << std::endl;
     result res;
     // work W(*C);
     // find all matched sell orders
@@ -439,8 +443,9 @@ void matchSellOrders(connection* C, int buyer_trans_id, int buyerId, int stock_i
 
             updateBalancesAndPositions(C, buyerId, matchingAccountId, symbol, executionAmount, executionPrice);
 
-            markOrdersAsExecuted(C, buyer_trans_id, buyerId, executionAmount, executionPrice);
-            markOrdersAsExecuted(C, order["TRANS_ID"].as<int>(), matchingAccountId, -executionAmount, executionPrice);
+            int executed_time = getCurrTime();
+            markOrdersAsExecuted(C, buyer_trans_id, buyerId, executionAmount, executionPrice, executed_time);
+            markOrdersAsExecuted(C, order["TRANS_ID"].as<int>(), matchingAccountId, -executionAmount, executionPrice, executed_time);
 
             // after mark executed, add new open
             if (type == 1) {
@@ -527,9 +532,9 @@ void updateBalancesAndPositions(connection* C, int buyerId, int sellerId, string
     std::cout << "line 476: amount: " << amount << " account_id : " << sellerId << " symbol:" << symbol << std::endl;
 }
 
-void markOrdersAsExecuted(connection* C, int orderId, int accountId, float amount, int price) {
+void markOrdersAsExecuted(connection* C, int orderId, int accountId, float amount, int price, int executed_time) {
     string markOrderExecuted = "UPDATE ORDERS SET STATUSS = 'EXECUTED', AMOUNT = " + to_string(amount) +
-        ", PRICE = " + to_string(price) +
+        ", PRICE = " + to_string(price) + ", ORDER_TIME = " + to_string(executed_time) +
         " WHERE ORDERS.TRANS_ID = " + to_string(orderId) +
         " AND ORDERS.ACCOUNT_ID = " + to_string(accountId) +
         " AND STATUSS='OPEN';";
@@ -537,7 +542,7 @@ void markOrdersAsExecuted(connection* C, int orderId, int accountId, float amoun
 
     // W.exec(markOrderExecuted);
     executeSQL(C, markOrderExecuted);
-    std::cout << "line 484: transId: " << orderId << " accountId: " << accountId << " amount: " << amount << " price: " << price << std::endl;
+    std::cout << "line 484: transId: " << orderId << " accountId: " << accountId << " amount: " << amount << " price: " << price << " executed time: " << executed_time << std::endl;
 
 }
 
