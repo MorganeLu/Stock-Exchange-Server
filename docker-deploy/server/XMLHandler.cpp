@@ -1,5 +1,6 @@
 #include "XMLHandler.hpp"
 #include <iostream>
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 std::string XMLHandler::receiveRequest(int client_fd) {
     // vector<char> req(BUFF_SIZE, 0);
@@ -43,10 +44,10 @@ std::string XMLHandler::handleXML(connection* C, const std::string& xmlContent) 
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(xmlContent.c_str());
     std::string response = "";
-    cout << "result: "<< result << endl;
+    cout << "result: " << result << endl;
     if (!result || xmlContent.empty()) {
-        cout << "result: "<< result << endl;
-        cout << "xmlContent: "<<xmlContent << endl;
+        cout << "result: " << result << endl;
+        cout << "xmlContent: " << xmlContent << endl;
         response += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<error>Illegal "
             "XML Format</error>\n";
     }
@@ -65,6 +66,8 @@ std::string XMLHandler::handleXML(connection* C, const std::string& xmlContent) 
                 "XML Tag</error>\n";
         }
     }
+    size_t res_size = response.size();
+    response = to_string(res_size) + "\n" + response;
     return response;
 }
 
@@ -75,7 +78,9 @@ void XMLHandler::parseCreate(connection* C, const pugi::xml_node& createNode, st
         if (std::string(child.name()) == "account") {
             // std::cout << "Account ID: " << child.attribute("id").value()
             //     << ", Balance: " << child.attribute("balance").value() << std::endl;
+            pthread_mutex_lock(&mutex);
             response += createAccount(C, child);
+            pthread_mutex_unlock(&mutex);
         }
         else if (std::string(child.name()) == "symbol") {
             // std::cout << "Symbol: " << child.attribute("sym").value() << std::endl;
@@ -83,7 +88,9 @@ void XMLHandler::parseCreate(connection* C, const pugi::xml_node& createNode, st
             //     std::cout << "  Account ID: " << account.attribute("id").value()
             //         << ", Shares: " << account.text().as_string() << std::endl;
             // }
+            pthread_mutex_lock(&mutex);
             response += createSymbol(C, child);
+            pthread_mutex_unlock(&mutex);
         }
         else {
             response += "<error>Invalid create tag</error>\n";
@@ -101,15 +108,21 @@ void XMLHandler::parseTransactions(connection* C, const pugi::xml_node& transact
             // std::cout << "Order:\n" << "Symbol: " << child.attribute("sym").value()
             //     << ", Amount: " << child.attribute("amount").value()
             //     << ", Limit: " << child.attribute("limit").value() << std::endl;
+            pthread_mutex_lock(&mutex);
             response += execOrder(C, child);
+            pthread_mutex_unlock(&mutex);
         }
         else if (std::string(child.name()) == "cancel") {
             // std::cout << "Query:\n" << "Id: " << child.attribute("id").value() << std::endl;
+            pthread_mutex_lock(&mutex);
             response += cancelOrderHelper(C, child);
+            pthread_mutex_unlock(&mutex);
         }
         else if (std::string(child.name()) == "query") {
             // std::cout << "Cancel:\n" << "Id: " << child.attribute("id").value() << std::endl;
+            pthread_mutex_lock(&mutex);
             response += queryOrder(C, child);
+            pthread_mutex_unlock(&mutex);
         }
         else {
             int accountId = child.parent().attribute("id").as_int();

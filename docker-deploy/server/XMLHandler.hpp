@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 class XMLHandler {
 public:
