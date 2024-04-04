@@ -330,10 +330,12 @@ void matchBuyOrders(connection* C, int seller_trans_id, int sellerId, int stock_
                 std::cout << "line 323: buyer_trans_id: " << matchingTransId << " buyer_id: " << matchingAccountId << " stock_id: " << stock_id << " splitAmount: " << splitAmount << " price: " << matchingPrice << " order_time: " << matchingTime << std::endl;
             }
 
-            string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(matchingAmount * matchingPrice) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
+            string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(executionAmount * executionPrice) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
+            // string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(matchingAmount * matchingPrice) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
             executeSQL(C, refundBuyerBalance);
 
-            string refundSellerPosition = "UPDATE POSITION SET AMOUNT=AMOUNT+" + to_string(amount) +
+            // string refundSellerPosition = "UPDATE POSITION SET AMOUNT=AMOUNT+" + to_string(abs(amount)) +
+            string refundSellerPosition = "UPDATE POSITION SET AMOUNT=AMOUNT+" + to_string(abs(executionAmount)) +
                 " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
             executeSQL(C, refundSellerPosition);
             std::cout << "line 332: amount: " << amount << " stock_id: " << stock_id << " sellerId: " << sellerId << std::endl;
@@ -403,7 +405,7 @@ void matchSellOrders(connection* C, int buyer_trans_id, int buyerId, int stock_i
             float executionAmount = min(abs(amount), abs(matchingAmount));
 
             float splitAmount;
-            int type;
+            int type = 65535;
             // buyer split
             if ((abs(amount) != abs(matchingAmount)) && (executionAmount == abs(matchingAmount))) {
                 // float splitAmount = abs(amount) - executionAmount;
@@ -425,10 +427,12 @@ void matchSellOrders(connection* C, int buyer_trans_id, int buyerId, int stock_i
                 std::cout << "line 398: seller_trans_id: " << matchingTransId << " buyer_id: " << matchingAccountId << " stock_id: " << stock_id << " splitAmount: " << splitAmount << " price: " << matchingPrice << " order_time: " << matchingTime << std::endl;
             }
 
-            string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(amount * price) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(buyerId) + ";";
+            // string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(amount * price) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(buyerId) + ";";
+            string refundBuyerBalance = "UPDATE ACCOUNT SET BALANCE=BALANCE+" + to_string(executionAmount * executionPrice) + " WHERE ACCOUNT.ACCOUNT_ID=" + to_string(buyerId) + ";";
             executeSQL(C, refundBuyerBalance);
 
-            string refundSellerPosition = "UPDATE POSITION SET AMOUNT=AMOUNT+" + to_string(abs(matchingAmount)) +
+            // string refundSellerPosition = "UPDATE POSITION SET AMOUNT=AMOUNT+" + to_string(abs(matchingAmount)) +
+            string refundSellerPosition = "UPDATE POSITION SET AMOUNT=AMOUNT+" + to_string(abs(executionAmount)) +
                 " WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
             executeSQL(C, refundSellerPosition);
             std::cout << "line 407: matchingAmount: " << matchingAmount << " stock_id: " << stock_id << " sellerId: " << matchingAccountId << std::endl;
@@ -455,14 +459,14 @@ void matchSellOrders(connection* C, int buyer_trans_id, int buyerId, int stock_i
                 std::cout << "line 434: seller_trans_id: " << matchingTransId << " buyer_id: " << matchingAccountId << " stock_id: " << stock_id << " splitAmount: " << splitAmount << " price: " << matchingPrice << " order_time: " << matchingTime << std::endl;
             }
 
-            amount += executionAmount;
+            amount -= executionAmount;
 
             string getSellerAmount = "SELECT POSITION.AMOUNT FROM POSITION WHERE POSITION.STOCK_ID="
                 + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
             // result sellerOrder = W.exec(getSellerAmount);
             result sellerOrder;
             getResult(C, getSellerAmount, sellerOrder);
-            if(sellerOrder.size()==0){
+            if (sellerOrder.size() == 0) {
                 continue;
             }
             float sellerAmount = sellerOrder.at(0).at(0).as<float>();
