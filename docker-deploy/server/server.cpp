@@ -80,6 +80,7 @@ void Server::run() {
         //Parameters: database name, user name, user password
 
         C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
+        // C = new connection("dbname=stock user=postgres password=passw0rd");
         if (C->is_open()) {
             cout << "Opened database successfully: " << C->dbname() << endl;
         }
@@ -117,7 +118,7 @@ void Server::run() {
     // }
 
     // 创建一个线程池来处理客户端连接
-    const int THREAD_POOL_SIZE = 1;
+    const int THREAD_POOL_SIZE = 2;
     std::vector<std::thread> threads;
 
     for (int i = 0; i < THREAD_POOL_SIZE; ++i) {
@@ -129,6 +130,7 @@ void Server::run() {
                     //Parameters: database name, user name, user password
 
                     thread_C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
+                    // thread_C = new connection("dbname=stock user=postgres password=passw0rd");
                     if (thread_C->is_open()) {
                         cout << "Opened database successfully: " << thread_C->dbname() << endl;
                     }

@@ -135,7 +135,7 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
     res = result(W.exec(sql));
     if (res.size() != 1) {
         W.commit();
-        return "  <error id=\"" + to_string(trans_id) + "\">Order does not exist</error>";
+        return "  <error id=\"" + to_string(trans_id) + "\">Order does not exist</error>\n";
     }
     int account = res.at(0).at(0).as<int>();
     int stock_id = res.at(0).at(1).as<int>();
@@ -144,7 +144,7 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
     string status = res.at(0).at(4).as<string>();
     if (account != account_id) {
         W.commit();
-        return "  <error id=\"" + to_string(trans_id) + "\">Account does not have this order</error>";
+        return "  <error id=\"" + to_string(trans_id) + "\">Account does not have this order</error>\n";
     }
 
     if (amount > 0) {     // buy
@@ -299,7 +299,7 @@ void matchBuyOrders(connection* C, work& W, int seller_trans_id, int sellerId, i
         "WHERE STOCK.SYMBOL = '" + symbol + "' AND STOCK.STOCK_ID=ORDERS.STOCK_ID AND "
         "STATUSS = \'OPEN\' AND " +
         "(AMOUNT > 0  AND PRICE >= " + to_string(price) + ") "
-        "ORDER BY ORDER_TIME ASC, PRICE ASC;";
+        "ORDER BY ORDER_TIME ASC, ORDER_ID ASC, PRICE ASC;";
     // getResult(C, sqlMatch, res);
     res = result(W.exec(sqlMatch));
 
@@ -315,6 +315,10 @@ void matchBuyOrders(connection* C, work& W, int seller_trans_id, int sellerId, i
 
             int executionPrice = order["ORDER_TIME"].as<int>() <= getCurrTime() ? matchingPrice : price;
             float executionAmount = min(abs(amount), abs(matchingAmount));
+
+            std::cout << "in matchBuyOrders: amount: " << to_string(amount) << std::endl;
+
+            std::cout << "in matchBuyOrders: matchingBuyerId: " << to_string(matchingAccountId) << " matchingAmount: "<< to_string(matchingAmount) << std::endl;
 
             float splitAmount;
             int type = 65535;
@@ -376,13 +380,26 @@ void matchBuyOrders(connection* C, work& W, int seller_trans_id, int sellerId, i
             }
 
             amount += executionAmount;
+            std::cout << "line 383: in matchBuyOrders: amount: " << to_string(amount) << std::endl;
 
+            if (amount == 0) {
+                std::cout << "line 385: delete from orders: account_id: " + to_string(matchingAccountId) + " stock_id: " + to_string(stock_id) << std::endl;
+                string deletesql = "DELETE FROM ORDERS WHERE ORDERS.STOCK_ID=" + to_string(stock_id) + " AND ORDERS.ACCOUNT_ID=" + to_string(matchingAccountId) + " AND ORDERS.AMOUNT = 0;";
+                // executeSQL(C, deletesql);
+                W.exec(deletesql);
+                // W.commit();
+                // break;
+                continue;
+            }
+
+            std::cout << "line 380: sellerId: " << to_string(sellerId) << " stock_id: " << to_string(stock_id) << std::endl;
             string getSellerAmount = "SELECT POSITION.AMOUNT FROM POSITION WHERE POSITION.STOCK_ID="
                 + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
             result sellerOrder;
             // getResult(C, getSellerAmount, sellerOrder);
             sellerOrder = result(W.exec(getSellerAmount));
             if (sellerOrder.size() == 0) {
+                std::cout << "line 386: sellerOrder size is 0" << std::endl;
                 continue;
             }
             float sellerAmount = sellerOrder.at(0).at(0).as<float>();
@@ -390,17 +407,11 @@ void matchBuyOrders(connection* C, work& W, int seller_trans_id, int sellerId, i
                 string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
                 // executeSQL(C, deletesql);
                 W.exec(deletesql);
-                continue;
+                std::cout << "line 393: seller amount in match buy orders is 0!!!" <<std::endl;
+                break;
             }
 
-            // if (amount == 0) {
-            //     string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
-            //     executeSQL(C, deletesql);
-            //     // W.exec(deletesql);
-            //     // W.commit();
-            //     // break;
-            //     continue;
-            // }
+            
         }
     }
     // if (amount != 0) {
@@ -422,7 +433,7 @@ void matchSellOrders(connection* C, work& W, int buyer_trans_id, int buyerId, in
         "WHERE STOCK.SYMBOL = '" + symbol + "' AND STOCK.STOCK_ID=ORDERS.STOCK_ID AND "
         "STATUSS = 'OPEN' AND " +
         "(AMOUNT < 0  AND PRICE <= " + to_string(price) + ") "
-        "ORDER BY ORDER_TIME ASC, PRICE ASC;";
+        "ORDER BY ORDER_TIME ASC, ORDER_ID ASC, PRICE ASC;";
     // getResult(C, sqlMatch, res);
     res = result(W.exec(sqlMatch));
 
@@ -502,6 +513,8 @@ void matchSellOrders(connection* C, work& W, int buyer_trans_id, int buyerId, in
             }
 
             amount -= executionAmount;
+
+            std::cout << "line 509: buyerId: " << to_string(buyerId) << " stock_id: " << to_string(stock_id) << " amount: "<< to_string(amount)<<std::endl;
 
             string getSellerAmount = "SELECT POSITION.AMOUNT FROM POSITION WHERE POSITION.STOCK_ID="
                 + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
@@ -608,7 +621,7 @@ string query(connection* C, int trans_id, int account_id) {
     res = result(W.exec(sql));
     if (res.size() == 0) {
         W.commit();
-        return "    <error id=\"" + to_string(trans_id) + "\">Order not exists</error>";
+        return "    <error id=\"" + to_string(trans_id) + "\">Order not exists</error>\n";
         // TBD order not exist
     }
 
