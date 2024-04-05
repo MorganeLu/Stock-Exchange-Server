@@ -171,13 +171,13 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
     // getResult(C, sql, res);
     res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "    <canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
+        msg += "    <canceled shares=\"" + to_string(it[0].as<int>()) + "\" time=\"" + to_string(it[1].as<string>()) + "\"/>\n";
     }
     sql = "SELECT ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'EXECUTED\';";
     // getResult(C, sql, res);
     res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "    <executed shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
+        msg += "    <executed shares=\"" + to_string(it[0].as<int>()) + "\" price=\"" + to_string(it[1].as<int>()) + "\" time=" + to_string(it[2].as<string>()) + "/>\n";
     }
     msg += "  </canceled>\n";
     W.commit();
@@ -318,7 +318,7 @@ void matchBuyOrders(connection* C, work& W, int seller_trans_id, int sellerId, i
 
             std::cout << "in matchBuyOrders: amount: " << to_string(amount) << std::endl;
 
-            std::cout << "in matchBuyOrders: matchingBuyerId: " << to_string(matchingAccountId) << " matchingAmount: "<< to_string(matchingAmount) << std::endl;
+            std::cout << "in matchBuyOrders: matchingBuyerId: " << to_string(matchingAccountId) << " matchingAmount: " << to_string(matchingAmount) << std::endl;
 
             float splitAmount;
             int type = 65535;
@@ -407,11 +407,11 @@ void matchBuyOrders(connection* C, work& W, int seller_trans_id, int sellerId, i
                 string deletesql = "DELETE FROM POSITION WHERE POSITION.STOCK_ID=" + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(sellerId) + ";";
                 // executeSQL(C, deletesql);
                 W.exec(deletesql);
-                std::cout << "line 393: seller amount in match buy orders is 0!!!" <<std::endl;
+                std::cout << "line 393: seller amount in match buy orders is 0!!!" << std::endl;
                 break;
             }
 
-            
+
         }
     }
     // if (amount != 0) {
@@ -514,7 +514,7 @@ void matchSellOrders(connection* C, work& W, int buyer_trans_id, int buyerId, in
 
             amount -= executionAmount;
 
-            std::cout << "line 509: buyerId: " << to_string(buyerId) << " stock_id: " << to_string(stock_id) << " amount: "<< to_string(amount)<<std::endl;
+            std::cout << "line 509: buyerId: " << to_string(buyerId) << " stock_id: " << to_string(stock_id) << " amount: " << to_string(amount) << std::endl;
 
             string getSellerAmount = "SELECT POSITION.AMOUNT FROM POSITION WHERE POSITION.STOCK_ID="
                 + to_string(stock_id) + " AND POSITION.ACCOUNT_ID=" + to_string(matchingAccountId) + ";";
@@ -602,7 +602,7 @@ void markOrdersAsExecuted(connection* C, work& W, int orderId, int accountId, fl
 
 string query(connection* C, int trans_id, int account_id) {
     work W(*C);
-    string msg = "  <status id=" + to_string(trans_id) + ">\n";
+    string msg = "  <status id=\"" + to_string(trans_id) + "\">\n";
     // check account
     string sql;
     sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
@@ -631,7 +631,7 @@ string query(connection* C, int trans_id, int account_id) {
     // getResult(C, sql, res);
     res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "    <open shares=" + to_string(it[0].as<int>()) + "/>\n";
+        msg += "    <open shares=\"" + to_string(it[0].as<int>()) + "\"/>\n";
     }
     // msg += "/r<open shares=" + to_string(res.at(0).at(0).as<int>()) + "/>\n";
 
@@ -640,7 +640,7 @@ string query(connection* C, int trans_id, int account_id) {
     // getResult(C, sql, res);
     res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "    <canceled shares=" + to_string(it[0].as<int>()) + " time=" + to_string(it[1].as<string>()) + "/>\n";
+        msg += "    <canceled shares=\"" + to_string(it[0].as<int>()) + "\" time=\"" + to_string(it[1].as<string>()) + "\"/>\n";
     }
     // msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " time=" + to_string(res.at(0).at(1).as<string>()) + "/>\n";
 
@@ -649,7 +649,7 @@ string query(connection* C, int trans_id, int account_id) {
     // getResult(C, sql, res);
     res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
-        msg += "    <executed shares=" + to_string(it[0].as<int>()) + " price=" + to_string(it[1].as<int>()) + " time=" + to_string(it[2].as<string>()) + "/>\n";
+        msg += "    <executed shares=\"" + to_string(it[0].as<int>()) + "\" price=\"" + to_string(it[1].as<int>()) + "\" time=\"" + to_string(it[2].as<string>()) + "\"/>\n";
     }
     // msg += "/r<executed shares=" + to_string(res.at(0).at(0).as<int>()) + " price=" + to_string(res.at(0).at(1).as<int>()) + " time=" + to_string(res.at(0).at(2).as<string>()) + "/>\n";
 
