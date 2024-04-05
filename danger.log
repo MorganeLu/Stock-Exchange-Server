@@ -1,0 +1,12 @@
+1. When using database transactions to ensure data consistency, the database aborted soon after the server started. We changed
+the database connection from one for all threads to one for each thread, then the server and database worked as expected.
+
+2. Invalid data displayed at the end of the responsed receieved by clients. We changed the response format from char[] to vector<char>,
+then the receieved response content is as expected.
+
+3. Refund amount was incorrect when executing orders, so we changed the refund amount to execution amount and solved this problem.
+
+4. When matching orders, if orders were placed in a short time, we cannot tell the time difference between different orders,
+so we added trans_id as a factor that should be considered when matching ordres.
+
+5. We added error checking to handle invalid XML format.
