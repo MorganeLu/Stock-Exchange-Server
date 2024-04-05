@@ -1,0 +1,5 @@
+Running client6 on core6
+Execution time: 3.859355912 seconds
+Total Requests: 150
+Throughput: 38.86 requests/second
+================================================

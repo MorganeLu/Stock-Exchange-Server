@@ -1,0 +1,5 @@
+Running client4 on core4
+Execution time: 3.889943294 seconds
+Total Requests: 150
+Throughput: 38.56 requests/second
+================================================

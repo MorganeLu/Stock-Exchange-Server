@@ -43,8 +43,8 @@ void Client::run(string request){
     buildClient();
     connect2Server();
     // cout << request.size() << endl;
-    cout << "Request:" <<endl;
-    cout << request << endl;
+    // cout << "Request:" <<endl;
+    // cout << request << endl;
 
     send(socket_fd, request.c_str(), request.length(), 0);
 
@@ -52,8 +52,8 @@ void Client::run(string request){
     // recv(socket_fd, response, 4096, 0);
     std::vector<char> response(1024);
     recv(socket_fd, response.data(), response.size(), 0);
-    cout << "REPSONSE:"<< endl;
-    cout << response.data() << endl;
+    // cout << "REPSONSE:"<< endl;
+    // cout << response.data() << endl;
 
     close(socket_fd);
 }

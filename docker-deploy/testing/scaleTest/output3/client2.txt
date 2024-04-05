@@ -1,0 +1,5 @@
+Running client2 on core2
+Execution time: 3.927832894 seconds
+Total Requests: 150
+Throughput: 38.18 requests/second
+================================================

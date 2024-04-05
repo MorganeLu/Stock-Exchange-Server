@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
     // string filename = "./xml/test01.xml";
     string filename = argv[1];
     std::ifstream file(filename);
-    cout << filename << endl;
+    // cout << filename << endl;
     std::stringstream buffer;
     if (file) {
         buffer << file.rdbuf();

@@ -79,8 +79,8 @@ void Server::run() {
         //Establish a connection to the database
         //Parameters: database name, user name, user password
 
-        C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
-        // C = new connection("dbname=stock user=postgres password=passw0rd");
+        // C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
+        C = new connection("dbname=stock user=postgres password=passw0rd");
         if (C->is_open()) {
             cout << "Opened database successfully: " << C->dbname() << endl;
         }
@@ -129,8 +129,8 @@ void Server::run() {
                     //Establish a connection to the database
                     //Parameters: database name, user name, user password
 
-                    thread_C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
-                    // thread_C = new connection("dbname=stock user=postgres password=passw0rd");
+                    // thread_C = new connection("dbname=vkjsgika user=vkjsgika password=r4T0AK81uEhTYAnOGxyGjuKoz72zIdPB host=ruby.db.elephantsql.com port=5432");
+                    thread_C = new connection("dbname=stock user=postgres password=passw0rd");
                     if (thread_C->is_open()) {
                         cout << "Opened database successfully: " << thread_C->dbname() << endl;
                     }

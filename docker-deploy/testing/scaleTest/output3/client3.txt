@@ -1,0 +1,5 @@
+Running client3 on core3
+Execution time: 3.899527302 seconds
+Total Requests: 150
+Throughput: 38.46 requests/second
+================================================

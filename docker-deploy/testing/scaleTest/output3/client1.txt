@@ -1,0 +1,5 @@
+Running client1 on core1
+Execution time: 3.914078458 seconds
+Total Requests: 150
+Throughput: 38.32 requests/second
+================================================
