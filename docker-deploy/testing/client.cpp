@@ -1,7 +1,7 @@
 #include "client.hpp"
 
 int Client::connect2Server(){
-    std::cout << "Connecting to " << hostname << " on port " << port << "..." << std::endl;
+    // std::cout << "Connecting to " << hostname << " on port " << port << "..." << std::endl;
 
     int status = connect(socket_fd, host_info_list->ai_addr, host_info_list->ai_addrlen);
     if (status == -1) {
@@ -19,7 +19,7 @@ int Client::connect2Server(){
 
     int status;
     // cout<<"start building client"<<endl;
-    std::cout<<"myServiering....:"<<hostname<<std::endl;
+    // std::cout<<"myServiering....:"<<hostname<<std::endl;
     status = getaddrinfo(hostname, port, &host_info, &host_info_list);
     if (status != 0) {
         std::cerr << "Error: cannot get address info for host" << std::endl;
@@ -43,14 +43,17 @@ void Client::run(string request){
     buildClient();
     connect2Server();
     // cout << request.size() << endl;
+    cout << "Request:" <<endl;
     cout << request << endl;
 
     send(socket_fd, request.c_str(), request.length(), 0);
 
-    char response[512];
-    recv(socket_fd, response, 512, 0);
-    cout << "REPSONSE:\n"<< endl;
-    cout << response << endl;
+    // char response[4096];
+    // recv(socket_fd, response, 4096, 0);
+    std::vector<char> response(1024);
+    recv(socket_fd, response.data(), response.size(), 0);
+    cout << "REPSONSE:"<< endl;
+    cout << response.data() << endl;
 
     close(socket_fd);
 }

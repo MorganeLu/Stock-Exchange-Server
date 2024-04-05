@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
         buffer << file.rdbuf();
         file.close();
         std::string xmlContent = buffer.str();
-        cout << xmlContent.size() << endl;
+        // cout << xmlContent.size() << endl;
         myclient.run(xmlContent);
     }
 
