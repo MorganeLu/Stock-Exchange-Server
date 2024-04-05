@@ -1,0 +1,21 @@
+version: '2'
+
+services:
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_DB=stock
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=passw0rd
+    restart: always
+
+  server:
+    user: root
+    build: ./server
+    command: bash -c "cd /code && ./server"
+    volumes:
+      - ./server:/code
+    ports:
+      - "12345:12345"
+    depends_on:
+      - db
