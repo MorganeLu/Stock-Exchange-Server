@@ -185,7 +185,8 @@ string cancelOrder(connection* C, int account_id, int trans_id) {
 }
 
 string executeOrder(connection* C, string symbol, int account_id, float amount, int price) {
-    work W(*C);
+    // work W(*C);
+    pqxx::transaction<pqxx::isolation_level::serializable> W(*C);
     string sql;
     sql = "SELECT ACCOUNT_ID FROM ACCOUNT WHERE ACCOUNT.ACCOUNT_ID=" + to_string(account_id) + ";";
     result res;
@@ -239,7 +240,12 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
             order_time = it["ORDER_TIME"].as<int>();
         }
         std::cout << "line 229: new order time: " << order_time << std::endl;
-        matchSellOrders(C, W, trans_id, account_id, stock_id, symbol, amount, price, order_time);
+        try{
+            matchSellOrders(C, W, trans_id, account_id, stock_id, symbol, amount, price, order_time);
+        }catch (const std::exception& e) {
+            std::cerr << "CATCH: " << e.what() << std::endl;
+        }
+        
     }
     else {  // sell
         // 是否需要将amount转为正数?
@@ -282,6 +288,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
             order_time = it["ORDER_TIME"].as<int>();
         }
         std::cout << "line 267: new order time: " << order_time << std::endl;
+        
         matchBuyOrders(C, W, trans_id, account_id, stock_id, symbol, amount, price, order_time);
     }
 
@@ -290,7 +297,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         to_string(price) + "\" id=\"" + to_string(trans_id) + "\"/>\n";
 }
 
-void matchBuyOrders(connection* C, work& W, int seller_trans_id, int sellerId, int stock_id, string symbol, float amount, int price, int order_time) {
+void matchBuyOrders(connection* C, pqxx::transaction<pqxx::isolation_level::serializable>& W, int seller_trans_id, int sellerId, int stock_id, string symbol, float amount, int price, int order_time) {
     std::cout << "line 288: order_time in matchBuyOrders: " << order_time << std::endl;
     result res;
     // work W(*C);
@@ -424,7 +431,7 @@ void matchBuyOrders(connection* C, work& W, int seller_trans_id, int sellerId, i
 }
 
 
-void matchSellOrders(connection* C, work& W, int buyer_trans_id, int buyerId, int stock_id, string symbol, float amount, int price, int order_time) {
+void matchSellOrders(connection* C, pqxx::transaction<pqxx::isolation_level::serializable>& W, int buyer_trans_id, int buyerId, int stock_id, string symbol, float amount, int price, int order_time) {
     std::cout << "line 387: order_time in matchSellOrders: " << order_time << std::endl;
     result res;
     // work W(*C);
@@ -547,7 +554,7 @@ void matchSellOrders(connection* C, work& W, int buyer_trans_id, int buyerId, in
 }
 
 
-void updateBalancesAndPositions(connection* C, work& W, int buyerId, int sellerId, string symbol, float amount, int price) {
+void updateBalancesAndPositions(connection* C, pqxx::transaction<pqxx::isolation_level::serializable>& W, int buyerId, int sellerId, string symbol, float amount, int price) {
     float totalCost = amount * price;
 
     // update buyer's balance (subtract total cost)
@@ -585,7 +592,7 @@ void updateBalancesAndPositions(connection* C, work& W, int buyerId, int sellerI
     std::cout << "line 476: amount: " << amount << " account_id : " << sellerId << " symbol:" << symbol << std::endl;
 }
 
-void markOrdersAsExecuted(connection* C, work& W, int orderId, int accountId, float amount, int price, int executed_time) {
+void markOrdersAsExecuted(connection* C, pqxx::transaction<pqxx::isolation_level::serializable>& W, int orderId, int accountId, float amount, int price, int executed_time) {
     string markOrderExecuted = "UPDATE ORDERS SET STATUSS = 'EXECUTED', AMOUNT = " + to_string(amount) +
         ", PRICE = " + to_string(price) + ", ORDER_TIME = " + to_string(executed_time) +
         " WHERE ORDERS.TRANS_ID = " + to_string(orderId) +
@@ -601,7 +608,8 @@ void markOrdersAsExecuted(connection* C, work& W, int orderId, int accountId, fl
 
 
 string query(connection* C, int trans_id, int account_id) {
-    work W(*C);
+    // work W(*C);
+    pqxx::transaction<pqxx::isolation_level::serializable> W(*C);
     string msg = "  <status id=\"" + to_string(trans_id) + "\">\n";
     // check account
     string sql;

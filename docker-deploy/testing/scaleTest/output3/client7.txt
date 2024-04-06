@@ -1,5 +1,5 @@
-Running client7 on core7
-Execution time: 3.836050641 seconds
-Total Requests: 150
-Throughput: 39.10 requests/second
+Running client No.7 on core No.7
+Execution time: 12.786934705 seconds
+Total Requests: 650
+Throughput: 50.83 requests/second
 ================================================

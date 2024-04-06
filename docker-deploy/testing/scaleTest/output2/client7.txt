@@ -1,20 +1,20 @@
 Running on 1 cores
-Execution time: 75.544784540 seconds
+Execution time: 77.233068768 seconds
 Total Requests: 3000
-Throughput: 39.71 requests/second
+Throughput: 38.84 requests/second
 ================================================
 Running on 2 cores
-Execution time: 87.012591920 seconds
+Execution time: 87.063250517 seconds
 Total Requests: 3000
-Throughput: 34.47 requests/second
+Throughput: 34.45 requests/second
 ================================================
 Running on 4 cores
-Execution time: 96.075962389 seconds
+Execution time: 95.933777178 seconds
 Total Requests: 3000
-Throughput: 31.22 requests/second
+Throughput: 31.27 requests/second
 ================================================
 Running on 8 cores
-Execution time: 105.742680245 seconds
+Execution time: 104.092060558 seconds
 Total Requests: 3000
-Throughput: 28.37 requests/second
+Throughput: 28.82 requests/second
 ================================================

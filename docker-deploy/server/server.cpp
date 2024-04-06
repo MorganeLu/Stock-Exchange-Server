@@ -118,7 +118,7 @@ void Server::run() {
     // }
 
     // 创建一个线程池来处理客户端连接
-    const int THREAD_POOL_SIZE = 2;
+    const int THREAD_POOL_SIZE = 8;
     std::vector<std::thread> threads;
 
     for (int i = 0; i < THREAD_POOL_SIZE; ++i) {

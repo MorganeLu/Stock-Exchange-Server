@@ -1,5 +1,0 @@
-create01: all success
-增加两个账户，分别有100块
-两个账户分别持股10支stock
-
-create02:

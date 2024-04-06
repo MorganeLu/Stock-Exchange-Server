@@ -2,7 +2,7 @@
 #单client多核
 
 fileNum=30
-loopNum=10
+loopNum=100
 num_clients=1
 total_cores=$(nproc)
 
@@ -14,16 +14,18 @@ for((coreNum=1; coreNum<=total_cores; coreNum=coreNum*2)); do
     for((i=0; i<loopNum; i++)); do
         for((j=0; j<fileNum; j++)); do
             if ((j<5)); then
-                filename="../xml/create$((i+1)).xml"
+                filename="../xml/create$(($j+1)).xml"
             fi
             if((j>=5)); then
-                filename="../xml/test$((i-4)).xml"
+                filename="../xml/test$(($j-4)).xml"
             fi
             if [ -f "$filename" ]; then
-                # taskset -c 0-$(($coreNum-1)) ../client "$filename" &
-                ../client "$filename" &
+                taskset -c 0-$(($coreNum-1)) ../client "$filename" &
                 client_pid=$!
-                taskset -cpa 0-$(($coreNum-1)) $client_pid > /dev/null
+                wait $client_pid
+                # ../client "$filename" &
+                # client_pid=$!
+                # taskset -cpa 0-$(($coreNum-1)) $client_pid > /dev/null
                 wait $client_pid
                 ((total_requests++))
             fi

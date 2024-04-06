@@ -50,7 +50,7 @@ void Client::run(string request){
 
     // char response[4096];
     // recv(socket_fd, response, 4096, 0);
-    std::vector<char> response(1024);
+    std::vector<char> response(4096);
     recv(socket_fd, response.data(), response.size(), 0);
     // cout << "REPSONSE:"<< endl;
     // cout << response.data() << endl;

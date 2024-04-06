@@ -1,5 +1,5 @@
-Running client5 on core5
-Execution time: 3.883657615 seconds
-Total Requests: 150
-Throughput: 38.62 requests/second
+Running client No.5 on core No.5
+Execution time: 12.886491232 seconds
+Total Requests: 650
+Throughput: 50.44 requests/second
 ================================================

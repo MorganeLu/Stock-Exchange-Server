@@ -2,7 +2,7 @@
 # 多client单核
 screen -ls | grep -oP '(?<=\t)\d+(?=\.)' | xargs -I {} screen -X -S {} quit
 
-num_clients=5
+num_clients=8
 cpu_core=0
 
 # 在 screen 会话中启动客户端程序

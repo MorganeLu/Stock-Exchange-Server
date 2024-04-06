@@ -154,18 +154,39 @@ std::string XMLHandler::execOrder(connection* C, const pugi::xml_node& orderNode
     int accountId = orderNode.parent().attribute("id").as_int();
     float amount = orderNode.attribute("amount").as_float();
     int limit = orderNode.attribute("limit").as_int();
-    return executeOrder(C, symbol, accountId, amount, limit);
+    // return executeOrder(C, symbol, accountId, amount, limit);
+    while (true) {
+        try {
+            return executeOrder(C, symbol, accountId, amount, limit);
+        } catch (const std::exception& e) {
+            std::cerr << "Database error: " << e.what() << std::endl;
+        }
+    }
 }
 
 std::string XMLHandler::cancelOrderHelper(connection* C, const pugi::xml_node& cancelNode) {
     int orderId = cancelNode.attribute("id").as_int();
     int accountId = cancelNode.parent().attribute("id").as_int();
-    return cancelOrder(C, accountId, orderId);
+    // return cancelOrder(C, accountId, orderId);
+    while (true) {
+        try {
+            return cancelOrder(C, accountId, orderId);
+        } catch (const std::exception& e) {
+            std::cerr << "Database error: " << e.what() << std::endl;
+        }
+    }
 }
 
 std::string XMLHandler::queryOrder(connection* C, const pugi::xml_node& queryNode) {
     int orderId = queryNode.attribute("id").as_int();
     int accountId = queryNode.parent().attribute("id").as_int();
-    return query(C, orderId, accountId);
+    // return query(C, orderId, accountId);
+    while (true) {
+        try {
+            return query(C, orderId, accountId);
+        } catch (const std::exception& e) {
+            std::cerr << "Database error: " << e.what() << std::endl;
+        }
+    }
 }
 

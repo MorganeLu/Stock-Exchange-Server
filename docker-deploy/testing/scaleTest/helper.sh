@@ -2,7 +2,7 @@
 #单client多核
 
 fileNum=30
-loopNum=10
+loopNum=100
 client=$1
 
 start_time=$(date +%s.%N)
@@ -12,15 +12,17 @@ total_requests=0
 for((i=0; i<loopNum; i++)); do
     for((j=0; j<fileNum; j++)); do
         if ((j<5)); then
-            filename="../xml/create$((i+1)).xml"
+            filename="../xml/create$(($i+1)).xml"
         fi
         if((j>=5)); then
-            filename="../xml/test$((i-4)).xml"
+            filename="../xml/test$(($i-4)).xml"
         fi
         if [ -f "$filename" ]; then
-            ../client "$filename" &
+            # ../client "$filename" &
+            # client_pid=$!
+            # taskset -cpa $(($client)) $client_pid > /dev/null
+            taskset -c 0-$(($client)) ../client "$filename" &
             client_pid=$!
-            taskset -cpa $(($client)) $client_pid > /dev/null
             wait $client_pid
             ((total_requests++))
         fi
