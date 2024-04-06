@@ -48,7 +48,7 @@ std::string XMLHandler::handleXML(connection* C, const std::string& xmlContent) 
     if (!result || xmlContent.empty()) {
         cout << "result: " << result << endl;
         cout << "xmlContent: " << xmlContent << endl;
-        response += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<error>Illegal "
+        response += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n  <error>Illegal "
             "XML Format</error>\n";
     }
     if (result) {
@@ -62,7 +62,7 @@ std::string XMLHandler::handleXML(connection* C, const std::string& xmlContent) 
             parseTransactions(C, rootNode, response);
         }
         else {
-            response += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<error>Illegal "
+            response += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n  <error>Illegal "
                 "XML Tag</error>\n";
         }
     }
@@ -93,7 +93,7 @@ void XMLHandler::parseCreate(connection* C, const pugi::xml_node& createNode, st
             pthread_mutex_unlock(&mutex);
         }
         else {
-            response += "<error>Invalid create tag</error>\n";
+            response += "  <error>Invalid create tag</error>\n";
         }
     }
 
@@ -126,7 +126,7 @@ void XMLHandler::parseTransactions(connection* C, const pugi::xml_node& transact
         }
         else {
             int accountId = child.parent().attribute("id").as_int();
-            response += "<error id=\"" + to_string(accountId) + "\">Invalid transaction tag</error>\n";
+            response += "  <error id=\"" + to_string(accountId) + "\">Invalid transaction tag</error>\n";
         }
     }
     response += "</results>";
@@ -158,7 +158,8 @@ std::string XMLHandler::execOrder(connection* C, const pugi::xml_node& orderNode
     while (true) {
         try {
             return executeOrder(C, symbol, accountId, amount, limit);
-        } catch (const std::exception& e) {
+        }
+        catch (const std::exception& e) {
             std::cerr << "Database error: " << e.what() << std::endl;
         }
     }
@@ -171,7 +172,8 @@ std::string XMLHandler::cancelOrderHelper(connection* C, const pugi::xml_node& c
     while (true) {
         try {
             return cancelOrder(C, accountId, orderId);
-        } catch (const std::exception& e) {
+        }
+        catch (const std::exception& e) {
             std::cerr << "Database error: " << e.what() << std::endl;
         }
     }
@@ -184,7 +186,8 @@ std::string XMLHandler::queryOrder(connection* C, const pugi::xml_node& queryNod
     while (true) {
         try {
             return query(C, orderId, accountId);
-        } catch (const std::exception& e) {
+        }
+        catch (const std::exception& e) {
             std::cerr << "Database error: " << e.what() << std::endl;
         }
     }

@@ -70,7 +70,7 @@ string addPosition(connection* C, string symbol, int account_id, float amount) {
     work W(*C);
     if (amount <= 0) {
         W.commit();
-        return "  <error id=\"" + to_string(account_id) + "\">Non-positive amount is not allowed</error>\n";
+        return "  <error sym=\"" + to_string(symbol) + "\" id=\"" + to_string(account_id) + "\">Non-positive amount is not allowed</error>\n";
     }
 
     string sql;
@@ -81,7 +81,7 @@ string addPosition(connection* C, string symbol, int account_id, float amount) {
     res = result(W.exec(sql));
     if (res.size() == 0) {
         W.commit();
-        return "  <error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
+        return "  <error sym=\"" + to_string(symbol) + "\" id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
     }
 
     // check stock existance
@@ -194,11 +194,13 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     res = result(W.exec(sql));
     if (res.size() == 0) {
         W.commit();
-        return "  <error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
+        return "  <error sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) +
+            "\" limit=\"" + to_string(price) + "\">Account not exists</error>\n";
     }
     if (amount == 0) {
         W.commit();
-        return "  <error id=\"" + to_string(account_id) + "\">Ammount cannot be 0</error>\n";
+        return "  <error sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) +
+            "\" limit=\"" + to_string(price) + "\">Ammount cannot be 0</error>\n";
     }
 
     sql = "SELECT STOCK.STOCK_ID FROM STOCK WHERE STOCK.SYMBOL=\'" + to_string(symbol) + "\';";
@@ -206,7 +208,8 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
     res = result(W.exec(sql));
     if (res.size() == 0) {
         W.commit();
-        return "  <error id=\"" + to_string(account_id) + "\">Stock does not exist</error>\n";
+        return "  <error sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) +
+            "\" limit=\"" + to_string(price) + "\">Stock does not exist</error>\n";
     }
     int stock_id = res.at(0).at(0).as<int>();
     // int original_amount = amount;
@@ -240,12 +243,13 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
             order_time = it["ORDER_TIME"].as<int>();
         }
         std::cout << "line 229: new order time: " << order_time << std::endl;
-        try{
+        try {
             matchSellOrders(C, W, trans_id, account_id, stock_id, symbol, amount, price, order_time);
-        }catch (const std::exception& e) {
+        }
+        catch (const std::exception& e) {
             std::cerr << "CATCH: " << e.what() << std::endl;
         }
-        
+
     }
     else {  // sell
         // 是否需要将amount转为正数?
@@ -257,13 +261,15 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
         res = result(W.exec(sql));
         if (res.size() == 0) {
             W.commit();
-            return "  <error id=\"" + to_string(account_id) + "\">Account does not have this stock</error>\n";
+            return "  <error sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) +
+                "\" limit=\"" + to_string(price) + "\">Account does not have this stock</error>\n";
         }
         int original_amount = res.at(0).at(0).as<int>();
         stock_id = res.at(0).at(1).as<int>();
         if (original_amount < abs_amount) {
             W.commit();
-            return "  <error id=\"" + to_string(account_id) + "\">Amount is not enough</error>\n";
+            return "  <error sym=\"" + to_string(symbol) + "\" amount=\"" + to_string(amount) +
+                "\" limit=\"" + to_string(price) + "\">Amount is not enough</error>\n";
         }
         else if (original_amount == abs_amount) {
             // delete data from position
@@ -288,7 +294,7 @@ string executeOrder(connection* C, string symbol, int account_id, float amount, 
             order_time = it["ORDER_TIME"].as<int>();
         }
         std::cout << "line 267: new order time: " << order_time << std::endl;
-        
+
         matchBuyOrders(C, W, trans_id, account_id, stock_id, symbol, amount, price, order_time);
     }
 
