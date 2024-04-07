@@ -625,23 +625,23 @@ string query(connection* C, int trans_id, int account_id) {
     res = result(W.exec(sql));
     if (res.size() == 0) {
         W.commit();
-        return "    <error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
+        return "  <error id=\"" + to_string(account_id) + "\">Account not exists</error>\n";
     }
 
     // check trans_id
-    sql = "SELECT ORDERS.STOCK_ID, ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE "
-        "ORDERS.TRANS_ID=" + to_string(trans_id) + ";";
+    sql = "SELECT ORDERS.STOCK_ID, ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME, ORDERS.ACCOUNT_ID FROM ORDERS WHERE "
+        "ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.ACCOUNT_ID=" + to_string(account_id) + ";";
     // getResult(C, sql, res);
     res = result(W.exec(sql));
     if (res.size() == 0) {
         W.commit();
-        return "    <error id=\"" + to_string(trans_id) + "\">Order not exists</error>\n";
+        return "  <error id=\"" + to_string(trans_id) + "\">Account does not have this order</error>\n";
         // TBD order not exist
-    }
+    }    
 
     // order可能split了，查询结果可能有多个
     // find open
-    sql = "SELECT ORDERS.AMOUNT FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'OPEN\';";
+    sql = "SELECT ORDERS.AMOUNT FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.ACCOUNT_ID=" + to_string(account_id) + " AND ORDERS.STATUSS=\'OPEN\';";
     // getResult(C, sql, res);
     res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
@@ -650,7 +650,7 @@ string query(connection* C, int trans_id, int account_id) {
     // msg += "/r<open shares=" + to_string(res.at(0).at(0).as<int>()) + "/>\n";
 
     // find cancel
-    sql = "SELECT ORDERS.AMOUNT, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'CANCELED\';";
+    sql = "SELECT ORDERS.AMOUNT, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.ACCOUNT_ID=" + to_string(account_id) + " AND ORDERS.STATUSS=\'CANCELED\';";
     // getResult(C, sql, res);
     res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {
@@ -659,7 +659,7 @@ string query(connection* C, int trans_id, int account_id) {
     // msg += "/r<canceled shares=" + to_string(res.at(0).at(0).as<int>()) + " time=" + to_string(res.at(0).at(1).as<string>()) + "/>\n";
 
     // find execute
-    sql = "SELECT ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.STATUSS=\'EXECUTED\';";
+    sql = "SELECT ORDERS.AMOUNT, ORDERS.PRICE, ORDER_TIME FROM ORDERS WHERE ORDERS.TRANS_ID=" + to_string(trans_id) + " AND ORDERS.ACCOUNT_ID=" + to_string(account_id) + " AND ORDERS.STATUSS=\'EXECUTED\';";
     // getResult(C, sql, res);
     res = result(W.exec(sql));
     for (result::const_iterator it = res.begin(); it != res.end(); ++it) {

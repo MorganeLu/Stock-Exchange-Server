@@ -12,7 +12,7 @@ services:
   server:
     user: root
     build: ./server
-    command: bash -c "cd /code && ./server"
+    command: bash -c "cd /code && make clean && make && ./server"
     volumes:
       - ./server:/code
     ports:
