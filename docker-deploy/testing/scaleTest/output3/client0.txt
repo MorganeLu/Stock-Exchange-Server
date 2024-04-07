@@ -1,5 +1,5 @@
 Running client No.0 on core No.0
-Execution time: 13.240011513 seconds
-Total Requests: 650
-Throughput: 49.09 requests/second
+Execution time: 123.053689073 seconds
+Total Requests: 3000
+Throughput: 24.37 requests/second
 ================================================

@@ -1,5 +1,5 @@
 Running client No.3 on core No.3
-Execution time: 13.010514248 seconds
-Total Requests: 650
-Throughput: 49.95 requests/second
+Execution time: 122.992306568 seconds
+Total Requests: 3000
+Throughput: 24.39 requests/second
 ================================================

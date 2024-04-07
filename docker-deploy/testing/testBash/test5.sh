@@ -1,6 +1,6 @@
 #!/bin/bash
-../client ../xml/create01.xml
-../client ../xml/test03.xml
-../client ../xml/test04.xml
-../client ../xml/test06.xml
-../client ../xml/test05.xml
+../client ../xml/create1.xml
+../client ../xml/test3.xml
+../client ../xml/test4.xml
+../client ../xml/test6.xml
+../client ../xml/test5.xml
