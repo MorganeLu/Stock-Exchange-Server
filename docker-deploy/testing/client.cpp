@@ -1,6 +1,6 @@
 #include "client.hpp"
 
-int Client::connect2Server(){
+int Client::connect2Server() {
     // std::cout << "Connecting to " << hostname << " on port " << port << "..." << std::endl;
 
     int status = connect(socket_fd, host_info_list->ai_addr, host_info_list->ai_addrlen);
@@ -11,10 +11,10 @@ int Client::connect2Server(){
     } // connect to the server
     return socket_fd;
 }
- int Client::buildClient(){
+int Client::buildClient() {
     memset(&host_info, 0, sizeof(host_info)); // init
-    
-    host_info.ai_family   = AF_UNSPEC;
+
+    host_info.ai_family = AF_UNSPEC;
     host_info.ai_socktype = SOCK_STREAM;
 
     int status;
@@ -27,9 +27,9 @@ int Client::connect2Server(){
         // return EXIT_FAILURE;
     } // get address info for host
 
-    socket_fd = socket(host_info_list->ai_family, 
-                host_info_list->ai_socktype, 
-                host_info_list->ai_protocol);
+    socket_fd = socket(host_info_list->ai_family,
+        host_info_list->ai_socktype,
+        host_info_list->ai_protocol);
     if (socket_fd == -1) {
         std::cerr << "Error: cannot create socket" << std::endl;
         std::cerr << "  (" << hostname << "," << port << ")" << std::endl;
@@ -39,7 +39,7 @@ int Client::connect2Server(){
     return EXIT_SUCCESS;
 }
 
-void Client::run(string request){
+void Client::run(string request) {
     buildClient();
     connect2Server();
     // cout << request.size() << endl;

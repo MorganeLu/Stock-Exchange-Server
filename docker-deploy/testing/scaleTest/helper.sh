@@ -12,10 +12,10 @@ total_requests=0
 for((i=0; i<loopNum; i++)); do
     for((j=0; j<fileNum; j++)); do
         if ((j<5)); then
-            filename="../xml/create$(($i+1)).xml"
+            filename="../xml/create$(($j+1)).xml"
         fi
         if((j>=5)); then
-            filename="../xml/test$(($i-4)).xml"
+            filename="../xml/test$(($j-4)).xml"
         fi
         if [ -f "$filename" ]; then
             # ../client "$filename" &
