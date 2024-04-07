@@ -12,7 +12,7 @@ If you see some problems, you can try this command before your next try.
 sudo docker-compose build --no-cache
 ```
 
-During your replicate testing, if you see this error "Error starting userland proxy: listen tcp4 0.0.0.0:5432: bind: address already in use", please try `systemctl status postgresql` to check tha status. If it is active, you can use `sudo systemctl start postgresql` to shut it down.
+During your replicate testing, if you see this error "Error starting userland proxy: listen tcp4 0.0.0.0:5432: bind: address already in use", please try `systemctl status postgresql` to check tha status. If it is active, you can use `sudo systemctl start postgresql` to shut it down and redo `sudo docker-compose up`.
 
 ## Testing
 
