@@ -16,7 +16,7 @@ During your replicate testing, if you see this error "Error starting userland pr
 
 ## Testing
 
-In the testing part, we have provide some XML files for testing, and you can find them by `cd /testing/xml`.
+In the testing part, we have provide some XML files for testing, and you can find them at `cd /testing/xml`.
 
 ### Single Client with Multiple Cores
 
